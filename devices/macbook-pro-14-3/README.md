@@ -27,16 +27,30 @@ boot works out of the box.
 
 ## Device steps
 
-1. **[macOS Sequoia via OCLP](docs/macos-sequoia-oclp.md)** — before
-   touching partitions.
+1. **On macOS, first** — clone this repo (or copy the script) and run the
+   device entry script: it checks the latest OpenCore Legacy Patcher release
+   and this Mac's macOS state, and prompts to start the
+   **[Sequoia upgrade via OCLP](docs/macos-sequoia-oclp.md)**:
+
+```bash
+./devices/macbook-pro-14-3/scripts/00-macos-oclp-check.sh
+```
+
 2. Common runbook steps 1–2 (prep + Ubuntu install).
-3. On the installed Ubuntu:
+3. On the installed Ubuntu — hardware setup, which finishes by offering the
+   shared **Ubuntu release + kernel patch check**:
 
 ```bash
 cd ~/dual-boot
-./devices/macbook-pro-14-3/scripts/10-mac-setup.sh   # Wi-Fi firmware, fan control, input checks
-./common/ubuntu/scripts/20-kernel.sh                 # releases, patches, version check
+./devices/macbook-pro-14-3/scripts/10-mac-setup.sh   # Wi-Fi firmware, fans, inputs,
+                                                     #   then Ubuntu/kernel release check
 ```
+
+Both scripts prompt interactively by default; unattended runs
+(`DEV_SETUP_ASSUME_YES=1`) take each prompt's default and skip the release
+checks unless `--check-releases` is passed — the same contract as
+`common/ubuntu/scripts/20-kernel.sh`. The macOS Sequoia upgrade itself is
+never started unattended (it's a guided GUI flow).
 
 - Pinned versions: [`config/versions.env`](config/versions.env)
   (OpenCore Legacy Patcher release).

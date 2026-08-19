@@ -22,6 +22,11 @@ writing — use the newest from the
 > and this is a community project — a Time Machine backup is mandatory, and
 > Ventura remains a supported fallback you can restore to.
 
+> **Entry point:** `../scripts/00-macos-oclp-check.sh` (run on macOS)
+> automates the checks below — latest OCLP release vs the pin and the
+> installed app, current macOS state — and prompts into this guide.
+> Unattended runs report only (`--check-releases`).
+
 ## Steps
 
 1. **Back up** — full Time Machine backup (this doubles as common-runbook

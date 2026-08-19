@@ -13,6 +13,24 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # shellcheck source=../../../common/lib/common.sh
 source "${REPO_ROOT}/common/lib/common.sh"
 
+usage() {
+  echo "Usage: $0 [--check-releases]"
+  echo "  --check-releases   in non-interactive mode (DEV_SETUP_ASSUME_YES=1),"
+  echo "                     also run the shared Ubuntu/kernel release check"
+  echo "                     (interactive mode always offers it)"
+}
+
+CHECK_RELEASES=""
+for arg in "$@"; do
+  case "$arg" in
+    --check-releases) CHECK_RELEASES=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) err "Unknown argument: $arg"; usage; exit 2 ;;
+  esac
+done
+[[ "${DEV_SETUP_ASSUME_YES:-0}" != "1" ]] && CHECK_RELEASES=1
+CHECK_RELEASES="${CHECK_RELEASES:-0}"
+
 main() {
   require_not_root
   require_ubuntu "26.04"
@@ -59,6 +77,15 @@ main() {
     apt_install mbpfan
     sudo systemctl enable --now mbpfan 2>/dev/null || true
     ok "mbpfan installed and enabled."
+  fi
+
+  # ---- Ubuntu release & kernel updates (shared script) -----------------------
+  section "Ubuntu release & kernel updates"
+  local kernel_script="${REPO_ROOT}/common/ubuntu/scripts/20-kernel.sh"
+  if [[ "$CHECK_RELEASES" != "1" ]]; then
+    log "Ubuntu/kernel release check skipped (non-interactive run without --check-releases)."
+  elif confirm "Check for the latest Ubuntu release and kernel patches now (common/ubuntu/scripts/20-kernel.sh)?" y; then
+    "$kernel_script" --check-releases
   fi
 
   section "Done"
