@@ -45,13 +45,13 @@ as_dev() {
 }
 
 echo "### [test 1] 20-kernel.sh unattended WITHOUT --check-releases: must skip"
-out="$(as_dev ./scripts/20-kernel.sh 2>&1)" || fail "test 1: script exited non-zero"
+out="$(as_dev ./common/windows-to-ubuntu/scripts/20-kernel.sh 2>&1)" || fail "test 1: script exited non-zero"
 grep -q "Release checks skipped" <<<"$out" || fail "test 1: missing 'Release checks skipped'"
 dpkg -s linux-generic >/dev/null 2>&1 && fail "test 1: kernel installed despite skipped checks"
 echo "  PASS: checks skipped, nothing installed"
 
 echo "### [test 2] 20-kernel.sh unattended WITH --check-releases: must check + patch"
-out="$(as_dev ./scripts/20-kernel.sh --check-releases 2>&1)" || { echo "$out" | tail -20; fail "test 2: script exited non-zero"; }
+out="$(as_dev ./common/windows-to-ubuntu/scripts/20-kernel.sh --check-releases 2>&1)" || { echo "$out" | tail -20; fail "test 2: script exited non-zero"; }
 grep -Eq "No newer Ubuntu release available|A newer Ubuntu release is available" <<<"$out" \
   || fail "test 2: Ubuntu release check did not run"
 dpkg-query -W -f='  PASS: kernel ${Version} installed\n' linux-generic \
@@ -59,7 +59,7 @@ dpkg-query -W -f='  PASS: kernel ${Version} installed\n' linux-generic \
 
 echo "### [test 3] 10-nvidia-driver.sh without a GPU: must fail gracefully"
 set +e
-out="$(as_dev ./scripts/10-nvidia-driver.sh 2>&1)"; rc=$?
+out="$(as_dev ./devices/msi-raider-18-hx-ai/scripts/10-nvidia-driver.sh 2>&1)"; rc=$?
 set -e
 [[ $rc -ne 0 ]] || fail "test 3: expected non-zero exit without an NVIDIA GPU"
 grep -q "No NVIDIA GPU visible" <<<"$out" || fail "test 3: missing graceful no-GPU message"

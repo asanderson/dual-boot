@@ -16,13 +16,13 @@ jobs:
       - name: Install shellcheck
         run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
       - name: Lint shell scripts
-        run: shellcheck -x -S warning scripts/10-nvidia-driver.sh scripts/20-kernel.sh scripts/lib/common.sh test/*.sh
+        run: shellcheck -x -S warning devices/*/scripts/*.sh common/windows-to-ubuntu/scripts/*.sh common/lib/common.sh test/*.sh
       - name: Parse Windows rollback script
         run: |
           pwsh -NoProfile -Command '
             $errs = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile(
-              "scripts/windows/rollback-ubuntu.ps1", [ref]$null, [ref]$errs)
+              "common/windows-to-ubuntu/windows/rollback-ubuntu.ps1", [ref]$null, [ref]$errs)
             if ($errs) { $errs; exit 1 } else { "ps1 syntax OK" }'
 
   kernel-test:
@@ -35,5 +35,5 @@ jobs:
         # Asserts: (1) unattended 20-kernel.sh without --check-releases skips
         # release checks and installs nothing; (2) with --check-releases it
         # runs the Ubuntu release check and installs the newest packaged
-        # kernel; (3) 10-nvidia-driver.sh fails gracefully with no GPU.
+        # kernel; (3) the device driver script fails gracefully with no GPU.
         run: ./test/container-test.sh

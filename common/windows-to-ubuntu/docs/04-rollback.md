@@ -12,13 +12,13 @@ Two rollback paths, in order of preference:
 ## Path A — remove Ubuntu in place (normal case, ~15 minutes)
 
 Everything happens inside Windows. Steps 2–4 are automated by
-[`scripts/windows/rollback-ubuntu.ps1`](../scripts/windows/rollback-ubuntu.ps1)
+[`common/windows-to-ubuntu/windows/rollback-ubuntu.ps1`](../windows/rollback-ubuntu.ps1)
 (run as Administrator; it confirms before each change) — or do them by hand:
 
 ### 1. Boot into Windows
 
-At the GRUB menu pick **Windows Boot Manager** (or press F11 at the MSI logo
-and choose Windows Boot Manager directly).
+At the GRUB menu pick **Windows Boot Manager** (or use your device's one-time
+boot-menu key and choose Windows Boot Manager directly).
 
 ### 2. Remove the `ubuntu` firmware boot entry
 
@@ -56,7 +56,7 @@ Resume-BitLocker -MountPoint C:   # if protection is still suspended
 
 (If you switched the BIOS storage mode from VMD/RAID to AHCI during install,
 you can leave it — Windows runs fine on AHCI — or revert it with the same
-safe-mode procedure from [troubleshooting](troubleshooting.md#installer-cannot-see-the-2tb-ssd-intel-vmdraid),
+safe-mode procedure from [troubleshooting](troubleshooting.md#installer-cannot-see-the-ssd-intel-vmdraid),
 in reverse.)
 
 ### 5. Reclaim the disk space
@@ -92,4 +92,4 @@ the image is the guarantee.
   it is never replaced or edited.
 - The Windows recovery partitions and the factory BitLocker configuration
   (suspension is temporary and self-re-arming).
-- Windows Registry, drivers, MSI Center configuration, and licensing.
+- Windows Registry, drivers, vendor-tool configuration, and licensing.

@@ -10,7 +10,8 @@ upstream release that followed 6.19 — so a stock install already satisfies the
 
 ## 2.1 Boot the installer
 
-1. Plug in the USB stick. Power on and tap **F11** at the MSI logo.
+1. Plug in the USB stick. Power on and tap your device's **one-time
+   boot-menu key** at the vendor logo (see your device page).
 2. Pick the USB entry listed under **UEFI** (not "Legacy"/"MBR").
 3. Choose **Try or Install Ubuntu**.
 
@@ -20,15 +21,15 @@ upstream release that followed 6.19 — so a stock install already satisfies the
 > only for the installer session — the proper NVIDIA driver fixes it
 > permanently in Step 3.
 
-Once the live desktop is up, connect to Wi-Fi. The Raider's **Intel Killer
-BE1750 (Wi-Fi 7)** is driven by `iwlwifi`, which has supported this silicon
-since kernel 6.5 — on kernel 7.0 with 26.04's linux-firmware it works out of
-the box. If it doesn't appear, use USB tethering for the install and see
+Once the live desktop is up, connect to Wi-Fi. Modern Intel Wi-Fi 6E/7
+adapters are driven by `iwlwifi` and work out of the box on kernel 7.0 with
+26.04's linux-firmware — your device page lists the exact adapter and any
+caveats. If Wi-Fi doesn't appear, use USB tethering for the install and see
 [troubleshooting](troubleshooting.md#wi-fi-adapter-missing).
 
-**If the installer cannot see the 2TB SSD**, stop — that's Intel VMD/RAID
+**If the installer cannot see the SSD**, stop — that's Intel VMD/RAID
 mode. Follow
-[the VMD procedure](troubleshooting.md#installer-cannot-see-the-2tb-ssd-intel-vmdraid)
+[the VMD procedure](troubleshooting.md#installer-cannot-see-the-ssd-intel-vmdraid)
 (it involves a Windows-side step first), then come back here.
 
 ## 2.2 Run the installer
@@ -92,13 +93,14 @@ The ISO installs the GA release-pocket kernel (7.0.0-14); the
 `-security`/`-updates` pockets already carry newer patched `7.0.0-xx` builds
 (7.0.0-29/-30 as of mid-August 2026). The `full-upgrade` below pulls them in
 — **reboot afterwards** so you're running the patched kernel
-(`scripts/20-kernel.sh` in Step 3 verifies this and keeps it that way).
+(`common/windows-to-ubuntu/scripts/20-kernel.sh` in Step 3 verifies this
+and keeps it that way).
 
 ```bash
 sudo apt update && sudo apt full-upgrade -y
 sudo apt install -y git
 git clone https://github.com/asanderson/dual-boot.git ~/dual-boot
-chmod +x ~/dual-boot/scripts/*.sh
+chmod +x ~/dual-boot/common/windows-to-ubuntu/scripts/*.sh ~/dual-boot/devices/*/scripts/*.sh
 ```
 
 Continue to [Step 3 — Post-install: NVIDIA driver and kernel check](03-post-install.md).

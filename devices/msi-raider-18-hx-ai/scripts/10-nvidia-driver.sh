@@ -11,11 +11,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-# shellcheck source=lib/common.sh
-source "${SCRIPT_DIR}/lib/common.sh"
+DEVICE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+# shellcheck source=../../../common/lib/common.sh
+source "${REPO_ROOT}/common/lib/common.sh"
 # shellcheck source=../config/versions.env
-source "${REPO_ROOT}/config/versions.env"
+source "${DEVICE_DIR}/config/versions.env"
 
 main() {
   require_not_root
