@@ -5,7 +5,36 @@ RTX 5090 Laptop GPU, 64GB DDR5-6400, 2TB NVMe SSD) with preinstalled
 Windows 11 Pro.
 
 Everything in this step happens inside Windows **before** you boot the Ubuntu
-installer. Budget ~30–45 minutes plus update time.
+installer. Budget ~30–45 minutes plus update and backup time.
+
+> **Design contract:** this entire process never modifies the Windows 11 Pro
+> installation. The only Windows-side changes are the reversible prep
+> settings in this doc; everything Ubuntu adds can be removed again — see
+> [Rollback](04-rollback.md).
+>
+> | Change | Made where | Undone by |
+> |---|---|---|
+> | BitLocker protection suspended | Step 1.2 | Re-arms automatically (or `Resume-BitLocker`) |
+> | Fast Startup / hibernation off | Step 1.3 | `powercfg /h on` |
+> | C: shrunk to free space for Ubuntu | Step 1.4 | Delete Ubuntu partition → Extend C: |
+> | `ubuntu` boot entry + `EFI\ubuntu` on the ESP | Ubuntu installer | [Rollback](04-rollback.md) steps 2–3 (scripted) |
+> | (Only if needed) VMD → AHCI storage mode | Troubleshooting | Same safe-mode procedure, in reverse |
+>
+> No file inside `C:\` is created, modified, or deleted; Windows Boot Manager
+> is never replaced — GRUB is installed alongside it and chain-loads it.
+
+## 1.0 Create a recovery safety net (before touching anything)
+
+The rollback doc's Path A removes Ubuntu cleanly in the expected cases; this
+step is the guarantee for the unexpected ones. With an external USB drive:
+
+1. **Full system image** — Control Panel → *Backup and Restore (Windows 7)* →
+   **Create a system image** → target the external drive. This captures the
+   entire factory disk (Windows, recovery partitions, EFI) and can restore
+   the SSD bit-for-bit to its preconfigured state.
+2. **Windows recovery drive** — run `RecoveryDrive.exe` (8GB+ USB stick, can
+   be a different stick than the Ubuntu one). This is what boots the *System
+   Image Recovery* tool if Windows itself ever won't start.
 
 ## 1.1 Update Windows and firmware
 

@@ -18,6 +18,9 @@ follow this exact order:
    confirm Windows starts normally.
 4. Re-boot the Ubuntu USB — the SSD is now visible. Continue Step 2.
 
+This change is reversible: to return to the factory VMD/RAID mode later, run
+the same safe-mode procedure with the VMD controller set back to **Enabled**.
+
 ## Wi-Fi adapter missing
 
 The Killer BE1750 (Intel BE200-class Wi-Fi 7) needs `iwlwifi` firmware from a

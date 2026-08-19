@@ -51,6 +51,11 @@ the unallocated space create:
    Partition and set it to be used as *EFI System Partition* **without
    formatting it** (it holds the Windows bootloader).
 
+> **Never delete, format, or resize the Windows, EFI, or recovery partitions
+> from the Ubuntu installer.** Ubuntu goes only into the unallocated space
+> you created in Step 1.4 — that's what keeps
+> [rollback](04-rollback.md) trivial.
+
 Swap is unnecessary to pre-create; Ubuntu uses a swapfile by default.
 
 3. Create your user, keep **"Require my password to log in"**, and let the
