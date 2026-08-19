@@ -73,4 +73,12 @@ set -e
 grep -q "This script targets the MacBook Pro" <<<"$out" || fail "test 4: missing wrong-hardware message"
 echo "  PASS: exited ${rc} with the wrong-hardware message"
 
+echo "### [test 5] 00-macos-oclp-check.sh on Linux: must refuse gracefully"
+set +e
+out="$(as_dev ./devices/macbook-pro-14-3/scripts/00-macos-oclp-check.sh 2>&1)"; rc=$?
+set -e
+[[ $rc -ne 0 ]] || fail "test 5: expected non-zero exit on non-macOS"
+grep -q "This script runs on macOS" <<<"$out" || fail "test 5: missing wrong-OS message"
+echo "  PASS: exited ${rc} with the wrong-OS message"
+
 echo "### [done] all assertions passed"

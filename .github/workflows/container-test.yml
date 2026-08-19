@@ -36,5 +36,6 @@ jobs:
         # release checks and installs nothing; (2) with --check-releases it
         # runs the Ubuntu release check and installs the newest packaged
         # kernel; (3) the device driver script fails gracefully with no GPU;
-        # (4) the Mac device script refuses to run on non-Apple hardware.
+        # (4) the Mac device script refuses to run on non-Apple hardware;
+        # (5) the macOS-side OCLP script refuses to run on Linux.
         run: ./test/container-test.sh
