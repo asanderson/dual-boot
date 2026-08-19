@@ -16,7 +16,7 @@ jobs:
       - name: Install shellcheck
         run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
       - name: Lint shell scripts
-        run: shellcheck -x -S warning devices/*/scripts/*.sh common/windows-to-ubuntu/scripts/*.sh common/lib/common.sh test/*.sh
+        run: shellcheck -x -S warning devices/*/scripts/*.sh common/*/scripts/*.sh common/lib/common.sh test/*.sh
       - name: Parse Windows rollback script
         run: |
           pwsh -NoProfile -Command '
@@ -35,5 +35,6 @@ jobs:
         # Asserts: (1) unattended 20-kernel.sh without --check-releases skips
         # release checks and installs nothing; (2) with --check-releases it
         # runs the Ubuntu release check and installs the newest packaged
-        # kernel; (3) the device driver script fails gracefully with no GPU.
+        # kernel; (3) the device driver script fails gracefully with no GPU;
+        # (4) the Mac device script refuses to run on non-Apple hardware.
         run: ./test/container-test.sh

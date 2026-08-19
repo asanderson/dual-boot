@@ -28,7 +28,7 @@ Follow the [common Windows → Ubuntu runbook](../../common/windows-to-ubuntu/do
 ```bash
 cd ~/dual-boot
 ./devices/msi-raider-18-hx-ai/scripts/10-nvidia-driver.sh   # driver + MOK, then REBOOT
-./common/windows-to-ubuntu/scripts/20-kernel.sh             # releases, patches, 7.0+ check
+./common/ubuntu/scripts/20-kernel.sh             # releases, patches, 7.0+ check
 ```
 
 - **[NVIDIA driver guide](docs/nvidia-driver.md)** — Blackwell requires the
