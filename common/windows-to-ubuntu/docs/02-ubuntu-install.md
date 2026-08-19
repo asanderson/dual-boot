@@ -93,14 +93,14 @@ The ISO installs the GA release-pocket kernel (7.0.0-14); the
 `-security`/`-updates` pockets already carry newer patched `7.0.0-xx` builds
 (7.0.0-29/-30 as of mid-August 2026). The `full-upgrade` below pulls them in
 — **reboot afterwards** so you're running the patched kernel
-(`common/windows-to-ubuntu/scripts/20-kernel.sh` in Step 3 verifies this
+(`common/ubuntu/scripts/20-kernel.sh` in Step 3 verifies this
 and keeps it that way).
 
 ```bash
 sudo apt update && sudo apt full-upgrade -y
 sudo apt install -y git
 git clone https://github.com/asanderson/dual-boot.git ~/dual-boot
-chmod +x ~/dual-boot/common/windows-to-ubuntu/scripts/*.sh ~/dual-boot/devices/*/scripts/*.sh
+chmod +x ~/dual-boot/common/*/scripts/*.sh ~/dual-boot/devices/*/scripts/*.sh
 ```
 
 Continue to [Step 3 — Post-install: NVIDIA driver and kernel check](03-post-install.md).

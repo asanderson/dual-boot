@@ -7,7 +7,7 @@ Two scripts, in order:
 cd ~/dual-boot
 ./devices/<your-device>/scripts/...              # device driver setup (see your
                                                  #   device page), then REBOOT
-./common/windows-to-ubuntu/scripts/20-kernel.sh  # releases, patches, kernel 7.0+
+./common/ubuntu/scripts/20-kernel.sh  # releases, patches, kernel 7.0+
 ```
 
 ## 3.1 Device driver setup — see your device page
@@ -18,7 +18,7 @@ device page, reboot as instructed, then return here. For the
 [the NVIDIA driver guide](../../../devices/msi-raider-18-hx-ai/docs/nvidia-driver.md)
 (`devices/msi-raider-18-hx-ai/scripts/10-nvidia-driver.sh`).
 
-## 3.2 Kernel — `common/windows-to-ubuntu/scripts/20-kernel.sh`
+## 3.2 Kernel — `common/ubuntu/scripts/20-kernel.sh`
 
 Ubuntu 26.04's stock kernel **is already 7.0**, but the install ISO carries
 the release-pocket build (**7.0.0-14** at GA) while kernel security patches
@@ -48,7 +48,7 @@ land as newer `7.0.0-xx` packages in the `-security`/`-updates` pockets
      is always the Ubuntu `-security` pocket, never mainline.
 
 Unattended usage: `DEV_SETUP_ASSUME_YES=1
-./common/windows-to-ubuntu/scripts/20-kernel.sh --check-releases` applies kernel updates and takes every other prompt's
+./common/ubuntu/scripts/20-kernel.sh --check-releases` applies kernel updates and takes every other prompt's
 default; without the flag, an unattended run skips the release checks
 entirely.
 
