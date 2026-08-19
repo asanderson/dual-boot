@@ -28,12 +28,15 @@ section() {
 # Prompting
 # ---------------------------------------------------------------------------
 # confirm "Question?" [default: y|n] -> returns 0 for yes, 1 for no.
-# Honors DEV_SETUP_ASSUME_YES=1 for unattended runs.
+# Unattended (DEV_SETUP_ASSUME_YES=1) runs take each prompt's DEFAULT — not a
+# blanket yes — so default-no options (e.g. unsigned mainline kernels) are
+# never auto-accepted by a script that mutates the system.
 confirm() {
   local prompt="$1" default="${2:-y}" reply hint
   if [[ "${DEV_SETUP_ASSUME_YES:-0}" == "1" ]]; then
-    log "$prompt -> yes (DEV_SETUP_ASSUME_YES=1)"
-    return 0
+    log "$prompt -> ${default} (DEV_SETUP_ASSUME_YES=1, taking default)"
+    [[ "$default" == "y" ]]
+    return
   fi
   if [[ "$default" == "y" ]]; then hint="[Y/n]"; else hint="[y/N]"; fi
   while true; do
