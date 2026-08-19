@@ -1,16 +1,16 @@
 # Troubleshooting
 
-## Installer cannot see the 2TB SSD (Intel VMD/RAID)
+## Installer cannot see the SSD (Intel VMD/RAID)
 
-MSI ships this platform with the storage controller in **Intel VMD/RAID**
-mode, which can hide the NVMe drive from the Ubuntu installer. The fix is
+Many vendors ship Windows machines with the storage controller in **Intel
+VMD/RAID** mode, which can hide the NVMe drive from the Ubuntu installer. The fix is
 switching to **AHCI** — but doing that cold makes *Windows* unbootable, so
 follow this exact order:
 
 1. **In Windows:** suspend BitLocker (see Step 1.2), then set Windows to boot
    into Safe Mode once — admin prompt:
    `bcdedit /set {current} safeboot minimal` — and shut down.
-2. **In BIOS** (Del at the MSI logo, F7 for Advanced): find the storage/VMD
+2. **In BIOS** (your device page lists the key): find the storage/VMD
    setting (often *Advanced → Integrated Peripherals → VMD Setup Menu →
    Enable VMD controller*) and set it to **Disabled** (AHCI). Save & exit.
 3. **Windows boots into Safe Mode** — this is what re-detects the AHCI driver.
@@ -23,8 +23,8 @@ the same safe-mode procedure with the VMD controller set back to **Enabled**.
 
 ## Wi-Fi adapter missing
 
-The Killer BE1750 (Intel BE200-class Wi-Fi 7) needs `iwlwifi` firmware from a
-current `linux-firmware`. On 26.04:
+Modern Intel Wi-Fi 6E/7 adapters (see your device page for the exact model)
+need `iwlwifi` firmware from a current `linux-firmware`. On 26.04:
 
 ```bash
 sudo apt update && sudo apt full-upgrade -y     # pulls newest linux-firmware
@@ -67,7 +67,7 @@ Don't leave `nomodeset` permanently — it disables GPU acceleration.
 ## GRUB doesn't show Windows / machine boots straight to Windows
 
 - Boots straight to **Windows**: firmware boot order — BIOS (Del) → Boot →
-  put **ubuntu** first, or one-time via F11. In Windows, *Fast Startup* being
+  put **ubuntu** first, or one-time via your boot-menu key. In Windows, *Fast Startup* being
   re-enabled by an update can also grab the boot path; re-disable it.
 - GRUB shows no **Windows Boot Manager** entry:
 

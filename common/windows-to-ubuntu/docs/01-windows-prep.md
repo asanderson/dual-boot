@@ -1,8 +1,8 @@
-# Step 1 — Prepare Windows 11 Pro (do this first, on the Raider)
+# Step 1 — Prepare Windows 11 Pro (do this first)
 
-Target machine: **MSI Raider 18 HX AI A2XWJG-069US** (Core Ultra 9 285HX,
-RTX 5090 Laptop GPU, 64GB DDR5-6400, 2TB NVMe SSD) with preinstalled
-Windows 11 Pro.
+Target: any machine in [`devices/`](../../../devices) with preinstalled
+Windows 11 Pro. Model-specific details (BIOS keys, hardware quirks, GPU
+driver) live on your device page; this runbook is common to all of them.
 
 Everything in this step happens inside Windows **before** you boot the Ubuntu
 installer. Budget ~30–45 minutes plus update and backup time.
@@ -39,9 +39,9 @@ step is the guarantee for the unexpected ones. With an external USB drive:
 ## 1.1 Update Windows and firmware
 
 1. Settings → Windows Update → install everything, reboot until clean.
-2. Open **MSI Center** → Support → Live Update → install any **BIOS/EC
-   firmware** updates. Newer firmware improves Linux compatibility on this
-   platform (Arrow Lake-HX + Blackwell are recent silicon).
+2. Install any **BIOS/EC firmware** updates via your vendor's tool (e.g.
+   MSI Center → Support → Live Update on MSI machines). Newer firmware
+   improves Linux compatibility, especially on recent silicon.
 
 ## 1.2 Save your BitLocker recovery key, then suspend BitLocker
 
@@ -71,7 +71,7 @@ Linux from mounting the Windows partition safely and can corrupt data.
 
 ## 1.4 Shrink the Windows partition
 
-Free up space for Ubuntu on the 2TB SSD. **500 GB** is a comfortable split for
+Free up space for Ubuntu on the SSD. **500 GB** is a comfortable split for
 a dev machine (Docker images, Ollama models, and toolchains add up fast);
 **150 GB** is a workable minimum.
 
@@ -92,17 +92,12 @@ On any machine, with an 8GB+ USB stick (it will be erased):
 2. Write it with [Rufus](https://rufus.ie) (Windows; GPT + UEFI target) or
    [balenaEtcher](https://etcher.balena.io) (any OS).
 
-## 1.6 Know your BIOS keys (MSI)
+## 1.6 Know your BIOS keys
 
-| Action | Key (press repeatedly at the MSI logo) |
-|---|---|
-| BIOS setup | **Del** (then **F7** toggles Advanced mode) |
-| One-time boot menu | **F11** |
-
-> These keys come from MSI's support documentation and community reports for
-> this laptop family, but were not independently verified on the A2XWJG
-> specifically — if one doesn't respond, try the other, or use Windows:
-> Settings → System → Recovery → Advanced startup → *UEFI Firmware Settings*.
+BIOS-setup and one-time-boot-menu keys vary by vendor — **see your device
+page** for the exact keys and any caveats. If a key doesn't respond, use
+Windows instead: Settings → System → Recovery → Advanced startup → *UEFI
+Firmware Settings*.
 
 Recommended BIOS settings for the install (Del → F7 Advanced):
 
@@ -111,10 +106,10 @@ Recommended BIOS settings for the install (Del → F7 Advanced):
   (see [Step 3](03-post-install.md)). Only disable it if you later choose
   unsigned mainline kernels.
 - **Fast Boot: disable** (BIOS setting, distinct from Windows Fast Startup) so
-  the F11/Del keys are reliably caught.
+  the boot-menu/BIOS keys are reliably caught.
 - **Storage / VMD**: leave as-is for now. Only change it if the Ubuntu
   installer cannot see the SSD — see the VMD procedure in
-  [troubleshooting](troubleshooting.md#installer-cannot-see-the-2tb-ssd-intel-vmdraid),
+  [troubleshooting](troubleshooting.md#installer-cannot-see-the-ssd-intel-vmdraid),
   because flipping it carelessly makes *Windows* unbootable.
 
 Done? Continue to [Step 2 — Install Ubuntu](02-ubuntu-install.md).

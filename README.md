@@ -4,55 +4,60 @@ Dual boot installer for multiple hardware devices and operating systems:
 repeatable instructions, configuration, and scripts for adding a Linux boot
 option to machines that ship with another OS preinstalled.
 
+The repo is organized as **common OS-pair runbooks** plus a **thin
+device-specific overlay** per machine:
+
+```
+common/
+  lib/common.sh          Shared bash helpers (prompts, apt, logging)
+  windows-to-ubuntu/     Pair-generic runbook + tooling:
+    docs/                  Steps 1–4: Windows prep → install → post-install
+                           → rollback, plus troubleshooting
+    scripts/20-kernel.sh   Release checks, kernel security updates, 7.0+ check
+    windows/rollback-ubuntu.ps1   Confirmation-gated Ubuntu removal
+devices/
+  <device>/              Device page: hardware table, BIOS keys, quirks,
+    docs/ scripts/ config/  device driver guide, research notes, pins
+test/  .github/          Container test harness + CI
+```
+
 ## Supported configurations
 
-| Hardware | Factory OS | Added OS | Runbook |
+| Hardware | Factory OS | Added OS | Start here |
 |---|---|---|---|
-| MSI Raider 18 HX AI A2XWJG-069US (Core Ultra 9 285HX · RTX 5090 Laptop GPU · 64GB DDR5-6400 · 2TB NVMe) | Windows 11 Pro | Ubuntu 26.04 LTS (kernel 7.0) | [docs/01-windows-prep.md](docs/01-windows-prep.md) |
+| MSI Raider 18 HX AI A2XWJG-069US (Core Ultra 9 285HX · RTX 5090 Laptop GPU · 64GB · 2TB NVMe) | Windows 11 Pro | Ubuntu 26.04 LTS (kernel 7.0) | [device page](devices/msi-raider-18-hx-ai/README.md) |
 
-## The path (MSI Raider 18 / Ubuntu 26.04)
-
-| Step | Where | Doc |
-|---|---|---|
-| 1. Prepare Windows (BitLocker, fast startup, shrink disk, USB, BIOS keys) | Windows | [docs/01-windows-prep.md](docs/01-windows-prep.md) |
-| 2. Install Ubuntu 26.04 alongside Windows | Ubuntu installer | [docs/02-ubuntu-install.md](docs/02-ubuntu-install.md) |
-| 3. NVIDIA driver → kernel check | Ubuntu | [docs/03-post-install.md](docs/03-post-install.md) |
-| Remove Ubuntu / restore original Windows setup | Windows | [docs/04-rollback.md](docs/04-rollback.md) |
-| Anything broken | — | [docs/troubleshooting.md](docs/troubleshooting.md) |
-| Verified facts + sources behind this runbook | — | [docs/research-notes.md](docs/research-notes.md) |
-
-**Windows is preserved by design.** The factory Windows 11 Pro installation
-is never modified: no file in `C:\` is touched, Windows Boot Manager is never
-replaced (GRUB installs alongside it), and every Windows-side prep setting is
+**Windows is preserved by design.** The factory Windows installation is never
+modified: no file in `C:\` is touched, Windows Boot Manager is never replaced
+(GRUB installs alongside it), and every Windows-side prep setting is
 reversible. Step 1.0 captures a full system image before anything changes,
-and [docs/04-rollback.md](docs/04-rollback.md) (with
-`scripts/windows/rollback-ubuntu.ps1`) removes Ubuntu and returns the machine
-to its original preconfigured state.
+and [the rollback runbook](common/windows-to-ubuntu/docs/04-rollback.md)
+(with `common/windows-to-ubuntu/windows/rollback-ubuntu.ps1`) removes Ubuntu
+and returns the machine to its original preconfigured state.
 
-Key facts (verified against primary sources — see the research notes):
+## The path
 
-- **Ubuntu 26.04 LTS ships Linux kernel 7.0 as its stock GA kernel** (7.0 is
-  the upstream release that followed 6.19), so no custom kernel work is
-  needed; `scripts/20-kernel.sh` verifies this, **applies the latest
-  packaged `7.0.0-xx` kernel security updates** from the
-  `-security`/`-updates` pockets (the ISO's GA build is older), can enable
-  unattended security upgrades, and offers the HWE stack.
-- The **RTX 5090 Laptop GPU (Blackwell) requires NVIDIA's open GPU kernel
-  modules** (the proprietary flavor doesn't support this generation);
-  `scripts/10-nvidia-driver.sh` installs the recommended `-open` driver with
-  Secure Boot/MOK enrollment handled.
+1. Open your **device page** under [`devices/`](devices) — hardware facts,
+   BIOS keys, quirks.
+2. Follow the **common runbook**:
+   [Windows prep](common/windows-to-ubuntu/docs/01-windows-prep.md) →
+   [Ubuntu install](common/windows-to-ubuntu/docs/02-ubuntu-install.md) →
+   [post-install](common/windows-to-ubuntu/docs/03-post-install.md) (device
+   driver step comes from your device page) —
+   [troubleshooting](common/windows-to-ubuntu/docs/troubleshooting.md) and
+   [rollback](common/windows-to-ubuntu/docs/04-rollback.md) as needed.
 
-## Quick start (on the freshly installed Ubuntu)
+Quick start on the freshly installed Ubuntu (MSI Raider 18 example):
 
 ```bash
 sudo apt update && sudo apt install -y git
 git clone https://github.com/asanderson/dual-boot.git ~/dual-boot
 cd ~/dual-boot
-chmod +x scripts/*.sh
+chmod +x common/windows-to-ubuntu/scripts/*.sh devices/*/scripts/*.sh
 
-./scripts/10-nvidia-driver.sh   # NVIDIA driver + MOK guidance, then reboot
-./scripts/20-kernel.sh          # check Ubuntu/kernel releases, patch, verify 7.0+
-                                #   (unattended: add --check-releases to opt in)
+./devices/msi-raider-18-hx-ai/scripts/10-nvidia-driver.sh   # driver + MOK, then reboot
+./common/windows-to-ubuntu/scripts/20-kernel.sh             # releases, patches, 7.0+ check
+                                                            #   (unattended: --check-releases)
 ```
 
 Development-environment tooling (Git, Docker, JDKs, language toolchains,
@@ -60,36 +65,26 @@ Elastic, Ollama, …) is intentionally out of scope here — it lives in a
 separate dev-environment repository and layers on top of a machine this repo
 has finished with.
 
-## Repo layout
-
-```
-docs/                    Step-by-step runbook (Windows prep → install → post-install)
-scripts/
-  10-nvidia-driver.sh    RTX 5090 Laptop GPU driver (open modules, Secure Boot aware)
-  20-kernel.sh           Kernel 7.0+ check, security updates, HWE / mainline options
-  lib/common.sh          Shared helpers (prompts, apt, logging)
-  windows/rollback-ubuntu.ps1   Confirmation-gated Ubuntu removal (run in Windows)
-config/
-  versions.env           Pinned versions (NVIDIA driver branch fallback)
-```
-
 ## Testing
 
 Every PR runs `.github/workflows/container-test.yml`: shellcheck across the
 shell scripts, a PowerShell parse of the rollback script, and a fresh Ubuntu
 26.04 container run asserting both unattended modes of `20-kernel.sh`
 (release checks skipped without `--check-releases`; Ubuntu release check +
-kernel patching with it) and the graceful no-GPU failure of
-`10-nvidia-driver.sh`. Run locally with Docker: `./test/container-test.sh`.
+kernel patching with it) and the graceful no-GPU failure of the device driver
+script. Run locally with Docker: `./test/container-test.sh`.
 
 ## Adding a configuration
 
-Each supported machine/OS pair should contribute the same shape: a numbered
-docs runbook (prep the factory OS → install → post-install), scripts that are
-idempotent and safe to re-run, and pins in `config/versions.env` for anything
-fetched as an artifact. Model-specific firmware details (BIOS hotkeys, storage
-mode quirks) belong in the runbook with an honest note about how they were
-verified.
+Add a directory under `devices/<device-slug>/` with the same shape as the
+existing one: a README (hardware table, BIOS keys with an honest note about
+how they were verified, quirks), device-specific scripts and docs, and pins
+in `config/versions.env` for anything fetched as an artifact. Device pages
+document only the **deltas** — link into the common runbook rather than
+copying it. Reusable pieces (an OS-pair runbook for a new pair, a GPU-family
+driver script) graduate into `common/` when a second consumer appears. If a
+device gains a second OS pair, nest per-pair subdirectories under that device
+then — not before.
 
 ## License
 

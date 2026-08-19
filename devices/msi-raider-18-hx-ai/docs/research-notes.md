@@ -52,7 +52,7 @@ install time.
   [latest.txt](https://download.nvidia.com/XFree86/Linux-x86_64/latest.txt))
 - **Known issue:** RTX 50-series s2idle resume hangs reported on kernel 7.0
   (NVIDIA open-gpu-kernel-modules tracker) — see
-  [troubleshooting](troubleshooting.md#suspendresume-hangs-rtx-50-series--kernel-70).
+  [troubleshooting](../../../common/windows-to-ubuntu/docs/troubleshooting.md#suspendresume-hangs-rtx-50-series--kernel-70).
 
 ## Dev toolchain on Ubuntu 26.04 — verified
 
