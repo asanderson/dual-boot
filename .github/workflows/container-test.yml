@@ -43,7 +43,9 @@ jobs:
   gpu-path:
     name: GPU-present driver install (stubbed RTX 5090)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The real driver install + DKMS build took ~24 min on a stock runner;
+    # leave headroom for slower runner days.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Run driver GPU-path test in a fresh container
