@@ -56,10 +56,15 @@ the release-pocket build (**7.0.0-14** at GA) while kernel security patches
 land as newer `7.0.0-xx` packages in the `-security`/`-updates` pockets
 (**7.0.0-29/-30** as of mid-August 2026). The script:
 
-1. Verifies the running kernel is 7.0+.
-2. Checks that the `-security` pocket is present in your apt sources, then
-   **installs the newest packaged `7.0.0-xx` kernel** (`linux-generic` from
-   `-security`/`-updates`) and tells you when a reboot is needed to boot it.
+1. **Checks for releases first** *(interactive runs always; unattended runs
+   only with `--check-releases`)*:
+   - **Newer Ubuntu release** (`do-release-upgrade -c`) — if one exists you're
+     prompted to start the guided release upgrade (never started unattended;
+     distro upgrades are too disruptive to run without a human).
+   - **Newer packaged kernel** — checks the `-security` pocket is present in
+     your apt sources, then prompts to **download and install the newest
+     `7.0.0-xx` kernel** and tells you when a reboot is needed to boot it.
+2. Verifies the running kernel is 7.0+.
 3. Offers to enable **unattended security upgrades**, so future kernel
    patches apply automatically without re-running anything.
 4. Offers the optional newer-kernel paths:
@@ -72,6 +77,11 @@ land as newer `7.0.0-xx` packages in the `-security`/`-updates` pockets
      NVIDIA DKMS modules are not expected to build against them. Say no
      unless you're chasing a specific hardware fix. The fully *patched* path
      is always the Ubuntu `-security` pocket, never mainline.
+
+Unattended usage: `DEV_SETUP_ASSUME_YES=1 ./scripts/20-kernel.sh
+--check-releases` applies kernel updates and takes every other prompt's
+default; without the flag, an unattended run skips the release checks
+entirely.
 
 ## 3.3 Development environment (separate repo)
 

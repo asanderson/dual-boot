@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
-# 20-kernel.sh — verify the kernel meets the 7.0+ requirement and apply the
-# latest packaged kernel security updates.
+# 20-kernel.sh — check for newer Ubuntu and Linux kernel releases, apply
+# kernel security updates, and verify the kernel meets the 7.0+ requirement.
 #
-# Ubuntu 26.04 LTS ships Linux 7.0 as its GA kernel (7.0 is the upstream
-# release that followed 6.19), so a stock install already satisfies
+# Usage: 20-kernel.sh [--check-releases]
+#
+# Modes:
+#   Interactive (default): FIRST checks for a newer Ubuntu release
+#     (do-release-upgrade) and for newer packaged kernels, prompting before
+#     downloading/installing either.
+#   Non-interactive (DEV_SETUP_ASSUME_YES=1): the release checks are SKIPPED
+#     unless --check-releases is passed. With the flag, prompts take their
+#     defaults: kernel updates are applied (default yes); a full Ubuntu
+#     release upgrade is only reported, never started (default no) — distro
+#     upgrades are too disruptive to run unattended.
+#
+# Background: Ubuntu 26.04 LTS ships Linux 7.0 as its GA kernel (7.0 is the
+# upstream release that followed 6.19), so a stock install already satisfies
 # "kernel 7.0 or newer". The install ISO carries the release-pocket build
 # (7.0.0-14 at GA); security patches land as newer 7.0.0-xx packages in the
 # -security/-updates pockets (e.g. 7.0.0-29/-30 as of mid-August 2026) —
@@ -29,29 +41,46 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 REQUIRED_MAJOR=7
 
-main() {
-  require_not_root
-  require_ubuntu "26.04"
+usage() {
+  echo "Usage: $0 [--check-releases]"
+  echo "  --check-releases   in non-interactive mode (DEV_SETUP_ASSUME_YES=1),"
+  echo "                     also check for newer Ubuntu and kernel releases"
+  echo "                     (interactive mode always checks)"
+}
 
-  section "Kernel check"
-  local running major
-  running="$(uname -r)"
-  major="${running%%.*}"
-  log "Running kernel: ${running}"
+CHECK_RELEASES=""
+for arg in "$@"; do
+  case "$arg" in
+    --check-releases) CHECK_RELEASES=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) err "Unknown argument: $arg"; usage; exit 2 ;;
+  esac
+done
+# Interactive runs always check; non-interactive runs only with the flag.
+[[ "${DEV_SETUP_ASSUME_YES:-0}" != "1" ]] && CHECK_RELEASES=1
+CHECK_RELEASES="${CHECK_RELEASES:-0}"
 
-  if (( major >= REQUIRED_MAJOR )); then
-    ok "Kernel ${running} satisfies the ${REQUIRED_MAJOR}.0+ requirement."
+check_ubuntu_release() {
+  section "Ubuntu release check"
+  command_exists do-release-upgrade || apt_install ubuntu-release-upgrader-core
+  local out rc=0
+  out="$(do-release-upgrade -c 2>&1)" || rc=$?
+  sed 's/^/  /' <<<"$out"
+  if [[ $rc -eq 0 ]]; then
+    warn "A newer Ubuntu release is available."
+    if confirm "Start the Ubuntu release upgrade now? (long, guided, ends in a reboot)" n; then
+      sudo do-release-upgrade
+      log "Release upgrade finished — reboot, then re-run this script on the new release."
+      exit 0
+    fi
+    log "Skipped. Run 'sudo do-release-upgrade' whenever you're ready."
   else
-    warn "Kernel ${running} is older than ${REQUIRED_MAJOR}.0."
-    warn "On Ubuntu 26.04 that usually means you're booted into an old entry —"
-    warn "run 'sudo apt full-upgrade', reboot, and pick the newest kernel in GRUB."
+    ok "No newer Ubuntu release available ($(. /etc/os-release && echo "$PRETTY_NAME") is current)."
   fi
+}
 
-  require_sudo
-  require_network
-
-  # ---- Kernel security updates (-security / -updates pockets) --------------
-  section "Kernel security updates"
+update_kernel_packages() {
+  section "Kernel updates (-security / -updates pockets)"
   apt_update_once
   if ! apt-cache policy | grep -q "${VERSION_CODENAME:-resolute}-security"; then
     warn "The Ubuntu -security pocket is missing from your apt sources — kernel"
@@ -63,7 +92,7 @@ main() {
   candidate="$(apt-cache policy linux-generic | awk '/Candidate:/ {print $2}')"
   log "linux-generic installed: ${installed} / newest available: ${candidate:-unknown}"
   if [[ -n "$candidate" && "$candidate" != "$installed" ]]; then
-    if confirm "Install the newest packaged kernel (${candidate}) with its security patches?" y; then
+    if confirm "Download and install the newest packaged kernel (${candidate})?" y; then
       apt_install linux-generic
       ok "Kernel packages updated to ${candidate}."
     fi
@@ -71,12 +100,42 @@ main() {
     ok "Kernel packages are current (${installed})."
   fi
 
-  local newest
+  local running newest
+  running="$(uname -r)"
   newest="$(find /boot -maxdepth 1 -name 'vmlinuz-*' 2>/dev/null | sed 's/.*vmlinuz-//' | sort -V | tail -1)"
   if [[ -n "$newest" && "$newest" != "$running" ]]; then
     warn "Running kernel ${running}, newest installed ${newest} — reboot to boot the patched kernel."
   fi
   [[ -f /run/reboot-required ]] && warn "The system reports a reboot is required."
+}
+
+main() {
+  require_not_root
+  require_ubuntu "26.04"
+  require_sudo
+  require_network
+
+  # ---- Release checks (always interactive; opt-in via flag when unattended) -
+  if [[ "$CHECK_RELEASES" == "1" ]]; then
+    check_ubuntu_release
+    update_kernel_packages
+  else
+    log "Release checks skipped (non-interactive run without --check-releases)."
+  fi
+
+  # ---- Requirement verification ---------------------------------------------
+  section "Kernel check"
+  local running major
+  running="$(uname -r)"
+  major="${running%%.*}"
+  log "Running kernel: ${running}"
+  if (( major >= REQUIRED_MAJOR )); then
+    ok "Kernel ${running} satisfies the ${REQUIRED_MAJOR}.0+ requirement."
+  else
+    warn "Kernel ${running} is older than ${REQUIRED_MAJOR}.0."
+    warn "On Ubuntu 26.04 that usually means you're booted into an old entry —"
+    warn "run 'sudo apt full-upgrade', reboot, and pick the newest kernel in GRUB."
+  fi
 
   if confirm "Ensure unattended security upgrades are enabled (future kernel patches apply automatically)?" y; then
     apt_install unattended-upgrades

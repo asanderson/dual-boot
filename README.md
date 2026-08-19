@@ -51,7 +51,8 @@ cd ~/dual-boot
 chmod +x scripts/*.sh
 
 ./scripts/10-nvidia-driver.sh   # NVIDIA driver + MOK guidance, then reboot
-./scripts/20-kernel.sh          # verify 7.0+, apply kernel security updates
+./scripts/20-kernel.sh          # check Ubuntu/kernel releases, patch, verify 7.0+
+                                #   (unattended: add --check-releases to opt in)
 ```
 
 Development-environment tooling (Git, Docker, JDKs, language toolchains,
