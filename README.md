@@ -33,7 +33,10 @@ Key facts (verified against primary sources — see the research notes):
 
 - **Ubuntu 26.04 LTS ships Linux kernel 7.0 as its stock GA kernel** (7.0 is
   the upstream release that followed 6.19), so no custom kernel work is
-  needed; `scripts/20-kernel.sh` verifies this and offers the HWE stack.
+  needed; `scripts/20-kernel.sh` verifies this, **applies the latest
+  packaged `7.0.0-xx` kernel security updates** from the
+  `-security`/`-updates` pockets (the ISO's GA build is older), can enable
+  unattended security upgrades, and offers the HWE stack.
 - The **RTX 5090 Laptop GPU (Blackwell) requires NVIDIA's open GPU kernel
   modules** (the proprietary flavor doesn't support this generation);
   `scripts/10-nvidia-driver.sh` installs the recommended `-open` driver with
@@ -48,7 +51,7 @@ cd ~/dual-boot
 chmod +x scripts/*.sh
 
 ./scripts/10-nvidia-driver.sh   # NVIDIA driver + MOK guidance, then reboot
-./scripts/20-kernel.sh          # verify kernel 7.0+, optional newer kernels
+./scripts/20-kernel.sh          # verify 7.0+, apply kernel security updates
 ```
 
 Development-environment tooling (Git, Docker, JDKs, language toolchains,
@@ -62,7 +65,7 @@ has finished with.
 docs/                    Step-by-step runbook (Windows prep → install → post-install)
 scripts/
   10-nvidia-driver.sh    RTX 5090 Laptop GPU driver (open modules, Secure Boot aware)
-  20-kernel.sh           Kernel 7.0+ verification, HWE / mainline options
+  20-kernel.sh           Kernel 7.0+ check, security updates, HWE / mainline options
   lib/common.sh          Shared helpers (prompts, apt, logging)
   windows/rollback-ubuntu.ps1   Confirmation-gated Ubuntu removal (run in Windows)
 config/

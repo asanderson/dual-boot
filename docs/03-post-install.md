@@ -51,17 +51,27 @@ mode.
 
 ## 3.2 Kernel — `scripts/20-kernel.sh`
 
-Ubuntu 26.04's stock kernel **is already 7.0**, so this script is a
-verification step. It also offers:
+Ubuntu 26.04's stock kernel **is already 7.0**, but the install ISO carries
+the release-pocket build (**7.0.0-14** at GA) while kernel security patches
+land as newer `7.0.0-xx` packages in the `-security`/`-updates` pockets
+(**7.0.0-29/-30** as of mid-August 2026). The script:
 
-- **HWE stack** (`linux-generic-hwe-26.04`): currently also kernel 7.0; rolls
-  forward to Canonical-signed newer kernels as point releases arrive. Safe
-  default — say yes.
-- **Mainline builds** (kernel.ubuntu.com via the `mainline` tool): bleeding
-  edge (7.1+/7.2-rc). These are **unsupported, receive no security updates,
-  and are unsigned** (conflicts with Secure Boot) — and NVIDIA DKMS modules
-  are not expected to build against them. Say no unless you're chasing a
-  specific hardware fix.
+1. Verifies the running kernel is 7.0+.
+2. Checks that the `-security` pocket is present in your apt sources, then
+   **installs the newest packaged `7.0.0-xx` kernel** (`linux-generic` from
+   `-security`/`-updates`) and tells you when a reboot is needed to boot it.
+3. Offers to enable **unattended security upgrades**, so future kernel
+   patches apply automatically without re-running anything.
+4. Offers the optional newer-kernel paths:
+   - **HWE stack** (`linux-generic-hwe-26.04`): currently also kernel 7.0;
+     rolls forward to Canonical-signed newer kernels as point releases
+     arrive. Safe default — say yes.
+   - **Mainline builds** (kernel.ubuntu.com via the `mainline` tool):
+     bleeding edge (7.1+/7.2-rc). These are **unsupported, receive no
+     security updates, and are unsigned** (conflicts with Secure Boot) — and
+     NVIDIA DKMS modules are not expected to build against them. Say no
+     unless you're chasing a specific hardware fix. The fully *patched* path
+     is always the Ubuntu `-security` pocket, never mainline.
 
 ## 3.3 Development environment (separate repo)
 
