@@ -17,8 +17,17 @@ option to machines that ship with another OS preinstalled.
 | 1. Prepare Windows (BitLocker, fast startup, shrink disk, USB, BIOS keys) | Windows | [docs/01-windows-prep.md](docs/01-windows-prep.md) |
 | 2. Install Ubuntu 26.04 alongside Windows | Ubuntu installer | [docs/02-ubuntu-install.md](docs/02-ubuntu-install.md) |
 | 3. NVIDIA driver → kernel check | Ubuntu | [docs/03-post-install.md](docs/03-post-install.md) |
+| Remove Ubuntu / restore original Windows setup | Windows | [docs/04-rollback.md](docs/04-rollback.md) |
 | Anything broken | — | [docs/troubleshooting.md](docs/troubleshooting.md) |
 | Verified facts + sources behind this runbook | — | [docs/research-notes.md](docs/research-notes.md) |
+
+**Windows is preserved by design.** The factory Windows 11 Pro installation
+is never modified: no file in `C:\` is touched, Windows Boot Manager is never
+replaced (GRUB installs alongside it), and every Windows-side prep setting is
+reversible. Step 1.0 captures a full system image before anything changes,
+and [docs/04-rollback.md](docs/04-rollback.md) (with
+`scripts/windows/rollback-ubuntu.ps1`) removes Ubuntu and returns the machine
+to its original preconfigured state.
 
 Key facts (verified against primary sources — see the research notes):
 
@@ -55,6 +64,7 @@ scripts/
   10-nvidia-driver.sh    RTX 5090 Laptop GPU driver (open modules, Secure Boot aware)
   20-kernel.sh           Kernel 7.0+ verification, HWE / mainline options
   lib/common.sh          Shared helpers (prompts, apt, logging)
+  windows/rollback-ubuntu.ps1   Confirmation-gated Ubuntu removal (run in Windows)
 config/
   versions.env           Pinned versions (NVIDIA driver branch fallback)
 ```
