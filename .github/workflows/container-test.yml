@@ -39,3 +39,20 @@ jobs:
         # (4) the Mac device script refuses to run on non-Apple hardware;
         # (5) the macOS-side OCLP script refuses to run on Linux.
         run: ./test/container-test.sh
+
+  gpu-path:
+    name: GPU-present driver install (stubbed RTX 5090)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run driver GPU-path test in a fresh container
+        # An lspci stub exposes the MSI Raider 18's RTX 5090 so
+        # 10-nvidia-driver.sh's GPU-present path runs for real: Secure Boot
+        # messaging, the actual nvidia driver package install from the
+        # Ubuntu archive, the CUDA-toolkit prompt taking its default no,
+        # and all three driver-selection branches (versions.env fallback,
+        # non-open recommendation upgraded to -open, -open recommendation
+        # as-is). Validates selection + install machinery, not module
+        # loading — that needs the real hardware.
+        run: ./test/container-test.sh --gpu-path
