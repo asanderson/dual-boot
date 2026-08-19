@@ -8,7 +8,12 @@
 #      installs the newest packaged kernel.
 #   3. 10-nvidia-driver.sh fails gracefully when no NVIDIA GPU is present.
 #
-# Usage: ./test/container-test.sh
+# Usage: ./test/container-test.sh [--gpu-path]
+#
+#   --gpu-path   instead of the default assertions, exercise the GPU-present
+#                path of 10-nvidia-driver.sh with an lspci stub exposing the
+#                MSI Raider's RTX 5090: real driver package install plus all
+#                three driver-selection branches (see test/gpu-path-init.sh).
 #
 # Env:
 #   DEV_SETUP_TEST_IMAGE   container image (default ubuntu:26.04)
@@ -21,11 +26,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 IMAGE="${DEV_SETUP_TEST_IMAGE:-ubuntu:26.04}"
 
+INIT="container-init.sh"
+for arg in "$@"; do
+  case "$arg" in
+    --gpu-path) INIT="gpu-path-init.sh" ;;
+    *) echo "error: unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
+
 DOCKER_ARGS=(--rm --network host -v "${REPO_ROOT}:/repo:ro")
 if [[ -n "${https_proxy:-}" ]]; then
   DOCKER_ARGS+=(-e https_proxy -e no_proxy)
   [[ -f /root/.ccr/ca-bundle.crt ]] && DOCKER_ARGS+=(-v /root/.ccr/ca-bundle.crt:/ccr-ca.crt:ro)
 fi
 
-echo ">>> image: ${IMAGE}"
-docker run "${DOCKER_ARGS[@]}" "${IMAGE}" bash /repo/test/container-init.sh
+echo ">>> image: ${IMAGE} (${INIT})"
+docker run "${DOCKER_ARGS[@]}" "${IMAGE}" bash "/repo/test/${INIT}"

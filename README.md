@@ -74,8 +74,12 @@ shell scripts, a PowerShell parse of the rollback script, and a fresh Ubuntu
 26.04 container run asserting both unattended modes of `20-kernel.sh`
 (release checks skipped without `--check-releases`; Ubuntu release check +
 kernel patching with it) and the graceful no-GPU failure of the device driver
-script and the Mac device scripts (wrong-hardware / wrong-OS refusal). Run locally
-with Docker: `./test/container-test.sh`.
+script and the Mac device scripts (wrong-hardware / wrong-OS refusal). A
+separate **GPU-path job** stubs `lspci` as the MSI Raider's RTX 5090 so the
+driver script's GPU-present path runs for real — actual driver package
+install plus all three driver-selection branches — validating selection and
+install machinery (module loading still needs the hardware). Run locally with
+Docker: `./test/container-test.sh` and `./test/container-test.sh --gpu-path`.
 
 ## Adding a configuration
 
