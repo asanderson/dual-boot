@@ -73,6 +73,15 @@ config/
   versions.env           Pinned versions (NVIDIA driver branch fallback)
 ```
 
+## Testing
+
+Every PR runs `.github/workflows/container-test.yml`: shellcheck across the
+shell scripts, a PowerShell parse of the rollback script, and a fresh Ubuntu
+26.04 container run asserting both unattended modes of `20-kernel.sh`
+(release checks skipped without `--check-releases`; Ubuntu release check +
+kernel patching with it) and the graceful no-GPU failure of
+`10-nvidia-driver.sh`. Run locally with Docker: `./test/container-test.sh`.
+
 ## Adding a configuration
 
 Each supported machine/OS pair should contribute the same shape: a numbered
