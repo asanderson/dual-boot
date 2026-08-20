@@ -6,8 +6,9 @@
 #
 # Modes:
 #   Interactive (default): FIRST checks for a newer Ubuntu release
-#     (do-release-upgrade) and for newer packaged kernels, prompting before
-#     downloading/installing either.
+#     (do-release-upgrade), for newer packaged kernels, and for the latest
+#     upstream stable kernel (kernel.org, report-only), prompting before
+#     downloading/installing anything.
 #   Non-interactive (DEV_SETUP_ASSUME_YES=1): the release checks are SKIPPED
 #     unless --check-releases is passed. With the flag, prompts take their
 #     defaults: kernel updates are applied (default yes); a full Ubuntu
@@ -26,12 +27,13 @@
 #   * linux-generic-hwe-26.04 — Canonical's HWE stack (currently also 7.0;
 #     rolls forward at later point releases) and stays signed/supported.
 #     Preferred.
-#   * kernel.ubuntu.com mainline builds — bleeding edge (7.1+/7.2-rc), but
-#     UNSIGNED (Secure Boot must be off or modules self-signed), unsupported,
-#     and they receive NO security updates — the patched path is the Ubuntu
-#     -security pocket, not mainline. NVIDIA DKMS modules are also not
-#     expected to build against them. Only for troubleshooting very new
-#     hardware.
+#   * kernel.ubuntu.com mainline builds — the upstream releases (7.2 is the
+#     latest upstream stable, released 2026-08-16; the release check below
+#     queries kernel.org live), but UNSIGNED (Secure Boot must be off or
+#     modules self-signed), unsupported, and they receive NO security
+#     updates — the patched path is the Ubuntu -security pocket, not
+#     mainline. NVIDIA DKMS modules are also not expected to build against
+#     them. Only for troubleshooting very new hardware.
 
 set -euo pipefail
 
@@ -49,6 +51,31 @@ usage() {
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
 COMMON_ARGS_ACCEPT="check-releases"
 parse_common_args "$@"
+
+# Report-only: the latest upstream stable kernel from kernel.org, so the
+# release check states plainly how far ahead upstream is of the packaged
+# 7.0.0-xx line — and through which (caveated) channel it is reachable.
+UPSTREAM_LATEST=""
+check_upstream_kernel() {
+  section "Upstream kernel check (kernel.org)"
+  local running_base
+  UPSTREAM_LATEST="$(fetch --max-time 20 https://www.kernel.org/releases.json 2>/dev/null \
+    | tr -d ' \n\t' | sed -n 's/.*"latest_stable":{"version":"\([0-9.]*\)".*/\1/p' || true)"
+  running_base="$(uname -r)"; running_base="${running_base%%-*}"
+  if [[ -z "$UPSTREAM_LATEST" ]]; then
+    warn "Could not determine the latest upstream kernel from kernel.org."
+    return 0
+  fi
+  log "Latest upstream stable kernel: ${UPSTREAM_LATEST} (running: ${running_base})"
+  if [[ "$running_base" == "$UPSTREAM_LATEST" || "$running_base" == "${UPSTREAM_LATEST}."* ]]; then
+    ok "Running kernel is on the latest upstream series."
+  else
+    log "Ubuntu 26.04's supported line stays 7.0.0-xx (patched via the -security"
+    log "pocket); the HWE stack tracks newer SIGNED kernels at point releases."
+    log "${UPSTREAM_LATEST} is reachable today only as an UNSIGNED kernel.ubuntu.com"
+    log "mainline build — offered at the end of this script with its caveats."
+  fi
+}
 
 check_ubuntu_release() {
   section "Ubuntu release check"
@@ -109,6 +136,7 @@ main() {
   if [[ "$CHECK_RELEASES" == "1" ]]; then
     check_ubuntu_release
     update_kernel_packages
+    check_upstream_kernel
   else
     log "Release checks skipped (non-interactive run without --check-releases)."
   fi
@@ -141,7 +169,7 @@ EOF
     apt_install "linux-generic-hwe-26.04" || warn "HWE metapackage not available yet (it appears around 26.04.2)."
   fi
 
-  if confirm "Install the 'mainline' tool for bleeding-edge kernel.ubuntu.com builds (unsigned — Secure Boot caveats)?" n; then
+  if confirm "Install the 'mainline' tool for kernel.ubuntu.com upstream builds${UPSTREAM_LATEST:+ (latest upstream: ${UPSTREAM_LATEST})} (unsigned — Secure Boot caveats)?" n; then
     apt_install software-properties-common
     sudo add-apt-repository -y ppa:cappelikan/ppa
     _APT_UPDATED=""

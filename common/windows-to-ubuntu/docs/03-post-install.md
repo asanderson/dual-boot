@@ -40,12 +40,14 @@ land as newer `7.0.0-xx` packages in the `-security`/`-updates` pockets
    - **HWE stack** (`linux-generic-hwe-26.04`): currently also kernel 7.0;
      rolls forward to Canonical-signed newer kernels as point releases
      arrive. Safe default — say yes.
-   - **Mainline builds** (kernel.ubuntu.com via the `mainline` tool):
-     bleeding edge (7.1+/7.2-rc). These are **unsupported, receive no
-     security updates, and are unsigned** (conflicts with Secure Boot) — and
-     NVIDIA DKMS modules are not expected to build against them. Say no
-     unless you're chasing a specific hardware fix. The fully *patched* path
-     is always the Ubuntu `-security` pocket, never mainline.
+   - **Mainline builds** (kernel.ubuntu.com via the `mainline` tool): the
+     upstream releases — 7.2 is the latest upstream stable (released
+     2026-08-16), and the script's release check reports the current one
+     live from kernel.org. These are **unsupported, receive no security
+     updates, and are unsigned** (conflicts with Secure Boot) — and NVIDIA
+     DKMS modules are not expected to build against them. Say no unless
+     you're chasing a specific hardware fix. The fully *patched* path is
+     always the Ubuntu `-security` pocket, never mainline.
 
 Unattended usage: `DEV_SETUP_ASSUME_YES=1
 ./common/ubuntu/scripts/20-kernel.sh --check-releases` applies kernel updates and takes every other prompt's
