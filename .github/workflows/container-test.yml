@@ -47,7 +47,8 @@ jobs:
         # install-plan script honors defaults + flags in the written plan,
         # never defaults to a destructive mode unattended, and documents
         # the shared flag vocabulary; (9) it rejects OSes outside the
-        # catalog and its Rocky/Windows 11 release checks are wired.
+        # catalog and its Rocky/Qubes/Windows 11 release checks — including
+        # the latest-supported-kernel prechecks — are wired.
         run: ./test/container-test.sh
 
   gpu-path:
