@@ -26,10 +26,11 @@ install time.
   [Phoronix](https://www.phoronix.com/news/Linux-7.0-Is-Next))
   → **Consequence: a stock 26.04 install satisfies "kernel 7.0 or newer" with
   no extra work.**
-- **Newer-than-7.0 kernels** (7.1.x/7.2-rc live on
-  [kernel.ubuntu.com/mainline](https://kernel.ubuntu.com/mainline/) as of
-  Aug 14, 2026) are explicitly **unsupported, get no security updates, are
-  not Secure Boot-signed, and NVIDIA DKMS modules are not expected to build
+- **Newer-than-7.0 kernels** (7.1.x, and 7.2 — upstream stable since
+  Aug 16, 2026 — live on
+  [kernel.ubuntu.com/mainline](https://kernel.ubuntu.com/mainline/)) are
+  explicitly **unsupported, get no security updates, are not Secure
+  Boot-signed, and NVIDIA DKMS modules are not expected to build
   against them**
   ([Ubuntu wiki](https://wiki.ubuntu.com/Kernel/MainlineBuilds)). The
   supported path to newer kernels is the HWE stack at later point releases.

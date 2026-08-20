@@ -36,8 +36,9 @@ jobs:
       - name: Run mode assertions in a fresh container
         # Asserts: (1) unattended 20-kernel.sh without --check-releases skips
         # release checks and installs nothing; (2) with --check-releases it
-        # runs the Ubuntu release check and installs the newest packaged
-        # kernel; (3) the device driver script fails gracefully with no GPU;
+        # runs the Ubuntu release check, installs the newest packaged
+        # kernel, and reports the latest upstream kernel from kernel.org;
+        # (3) the device driver script fails gracefully with no GPU;
         # (4) the Mac device script refuses to run on non-Apple hardware;
         # (5) the macOS-side OCLP script refuses to run on Linux;
         # (6) the Librem 14 dual-install script refuses on non-Purism

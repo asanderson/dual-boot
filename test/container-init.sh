@@ -54,6 +54,8 @@ echo "### [test 2] 20-kernel.sh unattended WITH --check-releases: must check + p
 out="$(as_dev ./common/ubuntu/scripts/20-kernel.sh --check-releases 2>&1)" || { echo "$out" | tail -20; fail "test 2: script exited non-zero"; }
 grep -Eq "No newer Ubuntu release available|A newer Ubuntu release is available" <<<"$out" \
   || fail "test 2: Ubuntu release check did not run"
+grep -Eq "Latest upstream stable kernel|Could not determine the latest upstream" <<<"$out" \
+  || fail "test 2: upstream kernel.org check did not run"
 dpkg-query -W -f='  PASS: kernel ${Version} installed\n' linux-generic \
   || fail "test 2: linux-generic not installed"
 
