@@ -119,6 +119,121 @@ plan_encrypt_decide() {
   log "Disk encryption: $( [[ "$PLAN_ENCRYPT" == "1" ]] && echo yes || echo no )"
 }
 
+# plan_wifi_decide — optional Wi-Fi settings for the installed systems:
+# SSID, password, security type, hidden-network. --wifi-* flags win;
+# otherwise interactive runs offer prompts (default: no Wi-Fi plan). The
+# password is read with echo off, never logged, and lands only in the
+# mode-600 plan file. Unattended runs plan Wi-Fi only when --wifi-ssid was
+# passed (password via --wifi-password or DUAL_BOOT_WIFI_PASSWORD).
+plan_wifi_decide() {
+  PLAN_WIFI_SSID="${WIFI_SSID:-}"
+  PLAN_WIFI_SECURITY="${WIFI_SECURITY:-wpa-psk}"
+  PLAN_WIFI_HIDDEN="${WIFI_HIDDEN:-0}"
+  PLAN_WIFI_PASSWORD="${WIFI_PASSWORD:-${DUAL_BOOT_WIFI_PASSWORD:-}}"
+  if [[ -z "$PLAN_WIFI_SSID" ]]; then
+    if [[ "${DEV_SETUP_ASSUME_YES:-0}" == "1" ]]; then
+      log "No --wifi-ssid given — not planning Wi-Fi configuration."
+      return 0
+    fi
+    if ! confirm "Configure Wi-Fi on the installed systems?" n; then
+      log "Wi-Fi: not configured by this plan."
+      return 0
+    fi
+    read -r -p "Wi-Fi SSID (network name): " PLAN_WIFI_SSID || PLAN_WIFI_SSID=""
+    if [[ -z "$PLAN_WIFI_SSID" ]]; then
+      warn "Empty SSID — skipping Wi-Fi configuration."
+      return 0
+    fi
+    local sec
+    read -r -p "Security [wpa-psk = WPA2/WPA3 Personal | sae = WPA3 only | open] (wpa-psk): " sec || sec=""
+    [[ -n "$sec" ]] && PLAN_WIFI_SECURITY="$sec"
+    if confirm "Hidden network (SSID not broadcast)?" n; then
+      PLAN_WIFI_HIDDEN=1
+    fi
+  fi
+  case "$PLAN_WIFI_SECURITY" in
+    wpa-psk|sae|open) ;;
+    *) die "Wi-Fi security must be wpa-psk, sae, or open (got '${PLAN_WIFI_SECURITY}')." ;;
+  esac
+  if [[ "$PLAN_WIFI_SECURITY" != "open" && -z "$PLAN_WIFI_PASSWORD" ]]; then
+    if [[ "${DEV_SETUP_ASSUME_YES:-0}" == "1" ]]; then
+      warn "--wifi-ssid given without a password (--wifi-password or the"
+      warn "DUAL_BOOT_WIFI_PASSWORD env var) — skipping Wi-Fi configuration."
+      PLAN_WIFI_SSID=""
+      return 0
+    fi
+    read -rs -p "Wi-Fi password (input hidden): " PLAN_WIFI_PASSWORD; echo
+    if [[ -z "$PLAN_WIFI_PASSWORD" ]]; then
+      warn "Empty password — skipping Wi-Fi configuration."
+      PLAN_WIFI_SSID=""
+      return 0
+    fi
+  fi
+  local extra=""
+  [[ "$PLAN_WIFI_HIDDEN" == "1" ]] && extra=", hidden"
+  log "Wi-Fi: ${PLAN_WIFI_SSID} (${PLAN_WIFI_SECURITY}${extra}); password not shown."
+}
+
+# wifi_apply_plan — configure Wi-Fi from the plan (--wifi-* flags on the
+# calling script override it) via NetworkManager, idempotently: an existing
+# profile with the same name is replaced, autoconnect is on, and activation
+# is attempted only when a Wi-Fi device is visible (the profile still helps
+# when the driver arrives after a reboot). No-ops honestly when the plan has
+# no Wi-Fi or nmcli is absent. On Qubes OS networking lives in sys-net, so
+# dom0 gets instructions instead of configuration.
+wifi_apply_plan() {
+  local ssid sec hidden pass
+  if [[ -f "${PLAN_FILE:-}" ]]; then
+    # shellcheck disable=SC1090
+    source "$PLAN_FILE"
+  fi
+  ssid="${WIFI_SSID:-${DUAL_BOOT_PLAN_WIFI_SSID:-}}"
+  sec="${WIFI_SECURITY:-${DUAL_BOOT_PLAN_WIFI_SECURITY:-wpa-psk}}"
+  hidden="${WIFI_HIDDEN:-${DUAL_BOOT_PLAN_WIFI_HIDDEN:-0}}"
+  pass="${WIFI_PASSWORD:-${DUAL_BOOT_WIFI_PASSWORD:-${DUAL_BOOT_PLAN_WIFI_PASSWORD:-}}}"
+  if [[ -z "$ssid" ]]; then
+    log "No Wi-Fi in the plan — nothing to configure."
+    return 0
+  fi
+  if grep -qi '^NAME=.*Qubes' /etc/os-release 2>/dev/null; then
+    log "Qubes OS: networking lives in sys-net, not dom0. Configure there:"
+    log "  qvm-run -u root sys-net 'nmcli connection add type wifi con-name \"${ssid}\" ssid \"${ssid}\" ...'"
+    log "  (or use the network applet; sys-net Wi-Fi profiles persist via qvm-features)"
+    return 0
+  fi
+  if ! command -v nmcli >/dev/null 2>&1; then
+    warn "NetworkManager (nmcli) not available — configure '${ssid}' manually."
+    return 0
+  fi
+  if [[ "$sec" != "open" && -z "$pass" ]]; then
+    warn "Wi-Fi plan for '${ssid}' has no password — skipping configuration."
+    return 0
+  fi
+  sudo nmcli connection delete "$ssid" >/dev/null 2>&1 || true
+  local -a args=(type wifi con-name "$ssid" ssid "$ssid" connection.autoconnect yes)
+  [[ "$hidden" == "1" ]] && args+=(wifi.hidden yes)
+  case "$sec" in
+    wpa-psk) args+=(wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$pass") ;;
+    sae)     args+=(wifi-sec.key-mgmt sae wifi-sec.psk "$pass") ;;
+    open)    ;;
+  esac
+  if ! sudo nmcli connection add "${args[@]}" >/dev/null; then
+    err "Could not create the NetworkManager profile for '${ssid}'."
+    return 1
+  fi
+  ok "Wi-Fi profile '${ssid}' configured (${sec}, autoconnect on)."
+  if nmcli -t -f DEVICE,TYPE device 2>/dev/null | grep -q ':wifi$'; then
+    if sudo nmcli connection up "$ssid" >/dev/null 2>&1; then
+      ok "Connected to '${ssid}'."
+    else
+      warn "Profile saved but activation failed (out of range / wrong password?) —"
+      warn "it will auto-connect when the network is reachable."
+    fi
+  else
+    log "No Wi-Fi device visible yet — the profile will connect once the driver is up."
+  fi
+}
+
 # plan_boot_size_decide — boot partition size in GiB (per OS boot partition
 # where the device uses one). --boot-size wins; interactive runs may edit.
 plan_boot_size_decide() {
@@ -227,6 +342,11 @@ plan_summary() {
   log "Boot-state backup first: $( [[ "${PLAN_BACKUP}" == "1" ]] && echo yes || echo no )"
   log "Secure Boot: $( [[ "${PLAN_SECURE_BOOT}" == "1" ]] && echo "keep enforced" || echo "not required" )"
   log "Disk encryption: $( [[ "${PLAN_ENCRYPT}" == "1" ]] && echo yes || echo no )"
+  if [[ -n "${PLAN_WIFI_SSID:-}" ]]; then
+    log "Wi-Fi: ${PLAN_WIFI_SSID} (${PLAN_WIFI_SECURITY}$( [[ "${PLAN_WIFI_HIDDEN}" == "1" ]] && echo ", hidden" ); password in the plan file only)"
+  else
+    log "Wi-Fi: not configured by this plan"
+  fi
   log "Boot partition size: ${PLAN_BOOT_GIB} GiB"
   log "Target disk: ${TARGET_DISK:-not set (device scripts use their default)}"
 }
@@ -247,6 +367,16 @@ plan_write() {
     echo "DUAL_BOOT_PLAN_ENCRYPT=\"${PLAN_ENCRYPT}\""
     echo "DUAL_BOOT_PLAN_BOOT_GIB=\"${PLAN_BOOT_GIB}\""
     echo "DUAL_BOOT_PLAN_DISK=\"${TARGET_DISK:-}\""
+    if [[ -n "${PLAN_WIFI_SSID:-}" ]]; then
+      # %q so SSIDs/passwords with spaces or shell metacharacters survive
+      # the round trip through `source`.
+      printf 'DUAL_BOOT_PLAN_WIFI_SSID=%q\n' "$PLAN_WIFI_SSID"
+      printf 'DUAL_BOOT_PLAN_WIFI_SECURITY=%q\n' "$PLAN_WIFI_SECURITY"
+      printf 'DUAL_BOOT_PLAN_WIFI_HIDDEN=%q\n' "$PLAN_WIFI_HIDDEN"
+      printf 'DUAL_BOOT_PLAN_WIFI_PASSWORD=%q\n' "$PLAN_WIFI_PASSWORD"
+    fi
   } > "$file"
-  ok "Plan written to ${file}"
+  # The plan can carry a Wi-Fi password — owner-only, always.
+  chmod 600 "$file"
+  ok "Plan written to ${file} (mode 600)"
 }

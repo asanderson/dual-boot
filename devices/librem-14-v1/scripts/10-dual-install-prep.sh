@@ -11,14 +11,16 @@
 # Usage: 10-dual-install-prep.sh [--check-releases] [--destructive]
 #                                [--backup|--no-backup]
 #                                [--secure-boot|--no-secure-boot]
-#                                [--encrypt|--no-encrypt] [--disk DEV]
+#                                [--encrypt|--no-encrypt] [--wifi-ssid NAME]
+#                                [--wifi-password PW] [--wifi-security T]
+#                                [--wifi-hidden] [--disk DEV]
 #                                [--boot-size GIB] [--download-dir DIR]
 #                                [--usb-qubes DEV] [--usb-pureos DEV]
 #                                [--plan-file FILE]
 #
 # Honors a plan written by common/scripts/00-install-plan.sh (boot size,
-# backup decision, Secure Boot, disk encryption, target disk); explicit
-# flags override the plan. The
+# backup decision, Secure Boot, disk encryption, Wi-Fi, target disk);
+# explicit flags override the plan. The
 # shared contract applies: interactive runs check releases first and confirm
 # the wipe (default YES — this device's documented default); unattended runs
 # check only with --check-releases and NEVER touch the disk without
@@ -45,13 +47,15 @@ source "${DEVICE_DIR}/config/versions.env"
 usage() {
   echo "Usage: $0 [--check-releases] [--destructive] [--backup|--no-backup]"
   echo "          [--secure-boot|--no-secure-boot] [--encrypt|--no-encrypt]"
-  echo "          [--disk DEV] [--boot-size GIB] [--download-dir DIR]"
-  echo "          [--usb-qubes DEV] [--usb-pureos DEV] [--plan-file FILE]"
+  echo "          [--wifi-ssid NAME] [--wifi-password PW] [--wifi-security T]"
+  echo "          [--wifi-hidden] [--disk DEV] [--boot-size GIB]"
+  echo "          [--download-dir DIR] [--usb-qubes DEV] [--usb-pureos DEV]"
+  echo "          [--plan-file FILE]"
   usage_common_flags
 }
 
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
-COMMON_ARGS_ACCEPT="check-releases destructive backup secure-boot encrypt disk boot-size download-dir usb plan-file"
+COMMON_ARGS_ACCEPT="check-releases destructive backup secure-boot encrypt wifi disk boot-size download-dir usb plan-file"
 parse_common_args "$@"
 
 # Honor a plan from 00-install-plan.sh: plan values become the defaults for
@@ -99,6 +103,15 @@ main() {
   warn "install is NOT preserved. Copy anything you need off this machine first."
 
   require_sudo
+
+  # Wi-Fi first (from the common plan / --wifi-* flags): configures the
+  # CURRENT system (factory PureOS or the live USB) so the ISO downloads
+  # below have a network. The installed Qubes gets sys-net instructions
+  # (wifi_apply_plan prints them when run under Qubes); the installed
+  # PureOS picks the profile up by re-running this or via nmcli/GUI.
+  section "Wi-Fi configuration (from the plan)"
+  wifi_apply_plan
+
   require_network
   apt_install curl gnupg gdisk
 

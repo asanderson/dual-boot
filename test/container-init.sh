@@ -117,16 +117,34 @@ grep -q 'DUAL_BOOT_PLAN_SECURE_BOOT="1"' <<<"$plan" \
   || fail "test 8: Secure Boot must default to enforced (1) in an unattended plan"
 grep -q 'DUAL_BOOT_PLAN_ENCRYPT="1"' <<<"$plan" \
   || fail "test 8: disk encryption must default to yes (1) in an unattended plan"
+! grep -q WIFI <<<"$plan" || fail "test 8: no Wi-Fi flags given, yet WIFI keys landed in the plan"
 out="$(as_dev ./common/scripts/00-install-plan.sh --os ubuntu --no-backup --no-secure-boot --no-encrypt 2>&1)" \
   || { echo "$out" | tail -20; fail "test 8: --no-secure-boot/--no-encrypt run exited non-zero"; }
 plan="$(cat /home/dev/.dual-boot-plan.env 2>/dev/null)" || fail "test 8: plan file not rewritten"
 grep -q 'DUAL_BOOT_PLAN_SECURE_BOOT="0"' <<<"$plan" || fail "test 8: --no-secure-boot not honored"
 grep -q 'DUAL_BOOT_PLAN_ENCRYPT="0"' <<<"$plan" || fail "test 8: --no-encrypt not honored"
+# One quoted string: as_dev flattens its args into a bash -c line, so the
+# space-in-password case needs its quoting embedded, not re-split.
+out="$(as_dev "./common/scripts/00-install-plan.sh --os ubuntu --no-backup \
+  --wifi-ssid TestNet --wifi-password 'secret pw1' --wifi-security sae --wifi-hidden" 2>&1)" \
+  || { echo "$out" | tail -20; fail "test 8: --wifi-* run exited non-zero"; }
+! grep -q "secret pw" <<<"$out" || fail "test 8: the Wi-Fi password leaked into script output"
+plan="$(cat /home/dev/.dual-boot-plan.env 2>/dev/null)" || fail "test 8: plan file not rewritten"
+grep -q 'DUAL_BOOT_PLAN_WIFI_SSID=TestNet' <<<"$plan" || fail "test 8: --wifi-ssid not honored"
+grep -q 'DUAL_BOOT_PLAN_WIFI_SECURITY=sae' <<<"$plan" || fail "test 8: --wifi-security not honored"
+grep -q 'DUAL_BOOT_PLAN_WIFI_HIDDEN=1' <<<"$plan" || fail "test 8: --wifi-hidden not honored"
+grep -q 'DUAL_BOOT_PLAN_WIFI_PASSWORD=' <<<"$plan" || fail "test 8: Wi-Fi password missing from the plan file"
+[[ "$(stat -c %a /home/dev/.dual-boot-plan.env)" == "600" ]] \
+  || fail "test 8: plan file with a Wi-Fi password must be mode 600"
+out="$(as_dev ./common/scripts/00-install-plan.sh --os ubuntu --no-backup --wifi-ssid NoPassNet 2>&1)" \
+  || { echo "$out" | tail -20; fail "test 8: ssid-without-password run exited non-zero"; }
+grep -q "skipping Wi-Fi configuration" <<<"$out" \
+  || fail "test 8: unattended --wifi-ssid without a password must warn and skip"
 out="$(as_dev ./common/scripts/00-install-plan.sh --help 2>&1)" || fail "test 8: --help exited non-zero"
-for flag in "--os LIST" "--mode OS=MODE" "--backup" "--secure-boot" "--encrypt" "--boot-size GIB" "--plan-file FILE"; do
+for flag in "--os LIST" "--mode OS=MODE" "--backup" "--secure-boot" "--encrypt" "--wifi-ssid" "--boot-size GIB" "--plan-file FILE"; do
   grep -q -- "$flag" <<<"$out" || fail "test 8: --help does not document ${flag}"
 done
-echo "  PASS: plan honors defaults + flags (incl. secure-boot/encrypt); unattended checks skipped; help documents the vocabulary"
+echo "  PASS: plan honors defaults + flags (incl. secure-boot/encrypt/wifi, mode-600 plan, no password leak); help documents the vocabulary"
 
 echo "### [test 9] 00-install-plan.sh: catalog validation + release-check wiring"
 set +e
