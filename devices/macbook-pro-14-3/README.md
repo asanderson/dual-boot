@@ -48,9 +48,12 @@ cd ~/dual-boot
 ```
 
 The Linux-side script **prechecks firmware and driver updates first**: an
-fwupd/LVFS query plus a `linux-firmware` package update check (Apple EFI/SMC
-firmware itself ships only through macOS — boot the OCLP-managed macOS side
-periodically to receive it). Both scripts prompt interactively by default;
+fwupd/LVFS query plus **this device's specific components** —
+`linux-firmware` (BCM43602 Wi-Fi/`brcmfmac`, Bluetooth), `intel-microcode`
+(i7-7700HQ), and Mesa (Radeon Pro 555/560 `amdgpu` userspace); `applespi`,
+`applesmc`, and `amdgpu` itself are in-kernel and update with the kernel
+check. (Apple EFI/SMC firmware ships only through macOS — boot the
+OCLP-managed macOS side periodically to receive it.) Both scripts prompt interactively by default;
 unattended runs (`DEV_SETUP_ASSUME_YES=1`) take each prompt's default and
 skip the prechecks/release checks unless `--check-releases` is passed — the
 same contract as `common/ubuntu/scripts/20-kernel.sh`. Firmware is never

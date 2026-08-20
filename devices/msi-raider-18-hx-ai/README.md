@@ -34,8 +34,11 @@ cd ~/dual-boot
 
 The driver script **prechecks firmware and driver updates first**: BIOS/EC
 version + an fwupd/LVFS query (MSI's own BIOS channel is MSI Center on the
-Windows side or USB flash from msi.com), and whether an already-installed
-NVIDIA driver has a newer package or branch. Interactive runs always
+Windows side or USB flash from msi.com), whether an already-installed
+NVIDIA driver has a newer package or branch, and **this device's specific
+components** — `linux-firmware` (Killer BE1750 Wi-Fi 7/`iwlwifi`,
+Bluetooth, GPU device firmware), `intel-microcode` (Core Ultra 9 285HX),
+and Mesa (the Intel iGPU half of hybrid graphics). Interactive runs always
 precheck; unattended runs (`DEV_SETUP_ASSUME_YES=1`) only with
 `--check-releases`, and firmware is never flashed unattended — the same
 contract as `20-kernel.sh`.

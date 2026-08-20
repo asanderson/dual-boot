@@ -72,6 +72,11 @@ main() {
     else
       log "No NVIDIA driver installed yet — fresh install below."
     fi
+
+    section "Component driver/firmware prechecks (Raider 18 HX AI)"
+    pkg_update_check linux-firmware "Killer BE1750 Wi-Fi 7 (iwlwifi), Bluetooth, and GPU device firmware"
+    pkg_update_check intel-microcode "Core Ultra 9 285HX CPU microcode"
+    pkg_update_check libgl1-mesa-dri "Intel iGPU userspace (the other half of hybrid graphics)"
   fi
 
   # ---- Secure Boot ---------------------------------------------------------

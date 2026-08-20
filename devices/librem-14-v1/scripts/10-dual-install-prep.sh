@@ -115,6 +115,15 @@ main() {
     warn "via Purism's utility (${PUREBOOT_UTIL_URL}) or from the PureBoot menu"
     warn "BEFORE installing the OSes. On this anti-interdiction unit, re-verify"
     warn "tamper evidence and re-sign /boot with the Librem Key after any flash."
+
+    section "Component driver prechecks (Librem 14)"
+    log "Wi-Fi/BT (Atheros QCNFA222, ath9k): fully free in-kernel driver and"
+    log "  firmware — no proprietary blob updates exist or are needed."
+    log "CPU microcode (i7-10710U): delivered through PureBoot firmware updates"
+    log "  (checked above), not distro packages — PureOS ships no proprietary"
+    log "  microcode by design."
+    log "EC-managed input/battery/fans: install the librem-ec-acpi DKMS driver"
+    log "  on the installed OSes (dom0 for Qubes) — see the runbook quirks."
   fi
 
   # ---- Release checks (interactive always; unattended only with the flag) ----

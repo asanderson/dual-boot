@@ -147,6 +147,28 @@ firmware_update_check() {
   fi
 }
 
+# pkg_update_check <package> [<what it covers>] — component driver/firmware
+# precheck: report installed vs newest archive version and offer the update
+# (default yes — these are signed archive packages, the same risk class as
+# the kernel updates the release checks already apply).
+pkg_update_check() {
+  local pkg="$1" why="${2:-}"
+  apt_update_once
+  local inst cand
+  inst="$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null || echo "none")"
+  cand="$(apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}')"
+  if [[ -z "$cand" || "$cand" == "(none)" ]]; then
+    warn "${pkg}: not available from the configured archives${why:+ (${why})}."
+  elif [[ "$inst" == "$cand" ]]; then
+    ok "${pkg} is current (${inst})${why:+ — ${why}}."
+  else
+    warn "${pkg}: installed ${inst}, newest ${cand}${why:+ — ${why}}."
+    if confirm "Install/update ${pkg} now?" y; then
+      apt_install "$pkg"
+    fi
+  fi
+}
+
 # ---------------------------------------------------------------------------
 # Misc
 # ---------------------------------------------------------------------------
