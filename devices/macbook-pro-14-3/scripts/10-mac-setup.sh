@@ -46,12 +46,13 @@ main() {
     firmware_update_check
     log "Apple EFI/SMC firmware updates ship only through macOS — boot the"
     log "OCLP-managed macOS side periodically so it can receive them."
-    if apt list --upgradable 2>/dev/null | grep -q '^linux-firmware/'; then
-      warn "A newer linux-firmware package is available (Wi-Fi/GPU device firmware)."
-      if confirm "Update linux-firmware now?" y; then apt_install linux-firmware; fi
-    else
-      ok "linux-firmware is current (drivers themselves update with the kernel — checked at the end)."
-    fi
+
+    section "Component driver/firmware prechecks (MacBookPro14,3)"
+    pkg_update_check linux-firmware "BCM43602 Wi-Fi (brcmfmac) + Bluetooth device firmware"
+    pkg_update_check intel-microcode "i7-7700HQ CPU microcode"
+    pkg_update_check libgl1-mesa-dri "Radeon Pro 555/560 userspace (amdgpu)"
+    log "applespi (keyboard/trackpad), applesmc (sensors/fans), and amdgpu are"
+    log "in-kernel — they update with the kernel (checked at the end)."
   fi
 
   # ---- Wi-Fi / Bluetooth (Broadcom BCM43602 via brcmfmac) -------------------

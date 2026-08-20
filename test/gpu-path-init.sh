@@ -35,6 +35,8 @@ if [[ -n "${https_proxy:-}" ]]; then
 fi
 # The driver pulls GB-scale packages; ride out transient download hiccups.
 echo 'Acquire::Retries "5";' >/etc/apt/apt.conf.d/80-retries
+# The flagged run pulls real firmware packages; ride out download hiccups.
+echo 'Acquire::Retries "5";' >/etc/apt/apt.conf.d/80-retries
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq ca-certificates sudo curl gnupg >/dev/null
@@ -85,10 +87,23 @@ as_dev() {
     bash -c "cd ~/dual-boot && $*"
 }
 
-run_driver() { as_dev ./devices/msi-raider-18-hx-ai/scripts/10-nvidia-driver.sh 2>&1; }
+run_driver() { as_dev ./devices/msi-raider-18-hx-ai/scripts/10-nvidia-driver.sh "$@" 2>&1; }
 
-echo "### [run A] no ubuntu-drivers recommendation -> versions.env fallback (${TARGET})"
-out="$(run_driver)" || { echo "$out" | tail -30; fail "run A: script exited non-zero"; }
+echo "### [run A] --check-releases prechecks + fallback install (${TARGET})"
+out="$(run_driver --check-releases)" || { echo "$out" | tail -30; fail "run A: script exited non-zero"; }
+# The full precheck stack must have run before the install: firmware (fwupd
+# degrades gracefully without a daemon), the NVIDIA driver precheck (fresh
+# container -> no driver yet), and the per-component package prechecks.
+grep -q "Firmware update precheck" <<<"$out" || fail "run A: firmware precheck section missing"
+grep -qE "No pending firmware updates|fwupd could not query" <<<"$out" \
+  || fail "run A: fwupd check neither succeeded nor degraded gracefully"
+grep -q "No NVIDIA driver installed yet" <<<"$out" || fail "run A: NVIDIA driver precheck missing"
+grep -q "Component driver/firmware prechecks (Raider 18 HX AI)" <<<"$out" \
+  || fail "run A: component precheck section missing"
+for pkg in linux-firmware intel-microcode libgl1-mesa-dri; do
+  grep -qE "${pkg} is current|${pkg}: installed|${pkg}: not available" <<<"$out" \
+    || fail "run A: ${pkg} component precheck missing"
+done
 grep -q "Secure Boot is disabled" <<<"$out" || fail "run A: Secure Boot no-EFI branch not taken"
 grep -q "ubuntu-drivers made no recommendation; falling back to ${TARGET}" <<<"$out" \
   || fail "run A: fallback warning missing"

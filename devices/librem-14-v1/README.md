@@ -43,9 +43,12 @@ OS. Useful menu paths:
    **green** HOTP blink on first power-on; change all default PINs.
    Runbook: [docs/qubes-pureos-dual-install.md](docs/qubes-pureos-dual-install.md).
 2. On the factory PureOS (or the PureOS live USB), run the device entry
-   script — it checks **firmware (PureBoot/EC) and both OS releases first**,
-   downloads + verifies both ISOs, writes installer USBs, and performs the
-   destructive disk layout:
+   script — it checks **firmware (PureBoot/EC), both OS releases, and this
+   device's component drivers first** (ath9k needs no blobs by design; CPU
+   microcode arrives via PureBoot firmware, not distro packages; EC-managed
+   input needs `librem-ec-acpi` on the installed OSes), downloads + verifies
+   both ISOs, writes installer USBs, and performs the destructive disk
+   layout:
 
 ```bash
 ./devices/librem-14-v1/scripts/10-dual-install-prep.sh

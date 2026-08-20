@@ -61,10 +61,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run driver GPU-path test in a fresh container
         # An lspci stub exposes the MSI Raider 18's RTX 5090 so
-        # 10-nvidia-driver.sh's GPU-present path runs for real: Secure Boot
-        # messaging, the actual nvidia driver package install from the
-        # Ubuntu archive, the CUDA-toolkit prompt taking its default no,
-        # and all three driver-selection branches (versions.env fallback,
+        # 10-nvidia-driver.sh's GPU-present path runs for real: run A now
+        # passes --check-releases, exercising the full precheck stack
+        # (fwupd degrading gracefully, the NVIDIA driver precheck, and the
+        # per-component linux-firmware/intel-microcode/Mesa prechecks)
+        # before the actual nvidia driver package install, Secure Boot
+        # messaging, the CUDA-toolkit prompt taking its default no, and
+        # all three driver-selection branches (versions.env fallback,
         # non-open recommendation upgraded to -open, -open recommendation
         # as-is). Validates selection + install machinery, not module
         # loading — that needs the real hardware.
