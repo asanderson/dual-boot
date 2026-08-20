@@ -27,8 +27,23 @@ os_in_catalog() {
 
 # ---------------------------------------------------------------------------
 # Latest-release checks — best-effort scrapes of official endpoints; each
-# reports drift against the catalog pin and never installs anything.
+# reports drift against the catalog pin and never installs anything. Every
+# check also reports the OS's LATEST SUPPORTED KERNEL via os_kernel_report.
 # ---------------------------------------------------------------------------
+
+# os_kernel_report <label> <pinned> <latest-or-empty> — the shared
+# pin-vs-latest kernel report (a proper if: returns 0 either way).
+os_kernel_report() {
+  local os="$1" pinned="$2" latest="$3"
+  if [[ -n "$latest" ]]; then
+    log "${os}: latest supported kernel: ${latest} (pinned: ${pinned})"
+    if [[ "$latest" != "$pinned" ]]; then
+      warn "${os}: pinned kernel (${pinned}) differs from the latest (${latest}) — update common/config/os-catalog.env."
+    fi
+  else
+    warn "${os}: could not determine the latest supported kernel; pinned: ${pinned}."
+  fi
+}
 os_release_check_ubuntu() {
   log "Ubuntu ${UBUNTU_VERSION} pinned; on an installed Ubuntu the release/kernel"
   log "check runs via common/ubuntu/scripts/20-kernel.sh (--check-releases)."
@@ -47,6 +62,18 @@ os_release_check_qubes() {
   else
     warn "Could not determine the latest Qubes release; using pin R${QUBES_VERSION}."
   fi
+  # dom0 kernel: default track plus the kernel-latest track, from the r4.3
+  # stable repo listing (patterns exclude the kernel-*-qubes-vm VM kernels).
+  local rpms kern klatest
+  rpms="$(fetch --max-time 20 "${QUBES_DOM0_RPM_URL}" 2>/dev/null || true)"
+  kern="$(grep -oE 'kernel-[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.qubes\.fc[0-9]+' <<<"$rpms" \
+    | sed 's/^kernel-//' | sort -uV | tail -1 || true)"
+  os_kernel_report "qubes (dom0)" "${QUBES_DOM0_KERNEL}" "$kern"
+  klatest="$(grep -oE 'kernel-latest-[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.qubes\.fc[0-9]+' <<<"$rpms" \
+    | sed 's/^kernel-latest-//' | sort -uV | tail -1 || true)"
+  if [[ -n "$klatest" ]]; then
+    log "qubes (dom0): the kernel-latest track currently offers ${klatest}."
+  fi
 }
 
 os_release_check_pureos() {
@@ -62,6 +89,13 @@ os_release_check_pureos() {
     warn "Could not determine the latest PureOS image set; using pin ${PUREOS_RELEASE_DIR}."
   fi
   log "(a successor codename to '${PUREOS_CODENAME}' would appear on pureos.net/download)"
+  # Kernel: latest signed linux-image of the crimson series (Debian-12 6.1.y)
+  # from the pool listing; the series filter scopes out other suites' debs.
+  local kern
+  kern="$(fetch --max-time 20 "${PUREOS_KERNEL_POOL_URL}" 2>/dev/null \
+    | grep -oE "linux-image-${PUREOS_KERNEL_SERIES//./\\.}-[0-9]+-amd64_[0-9][^_\"<]*_amd64\.deb" \
+    | sed -E 's/^.*_([^_]+)_amd64\.deb$/\1/' | sort -uV | tail -1 || true)"
+  os_kernel_report "pureos" "${PUREOS_KERNEL}" "$kern"
 }
 
 os_release_check_rocky() {
@@ -77,12 +111,18 @@ os_release_check_rocky() {
   else
     warn "Could not determine the latest Rocky release; using pin ${ROCKY_VERSION}."
   fi
+  # Kernel: latest kernel-core in the live 10.x BaseOS package listing.
+  local kern
+  kern="$(fetch --max-time 20 "${ROCKY_KERNEL_PKGS_URL}" 2>/dev/null \
+    | grep -oE 'kernel-core-[0-9][^"<]*\.el10[_0-9]*\.x86_64\.rpm' \
+    | sed -e 's/^kernel-core-//' -e 's/\.x86_64\.rpm$//' | sort -uV | tail -1 || true)"
+  os_kernel_report "rocky" "${ROCKY_KERNEL}" "$kern"
 }
 
 os_release_check_rhel() {
-  local latest
-  latest="$(fetch --max-time 20 "${RHEL_RELEASES_URL}" 2>/dev/null \
-    | grep -oE '(Red Hat Enterprise Linux|RHEL) [0-9]+\.[0-9]+' \
+  local page latest kern
+  page="$(fetch --max-time 20 "${RHEL_RELEASES_URL}" 2>/dev/null || true)"
+  latest="$(grep -oE '(Red Hat Enterprise Linux|RHEL) [0-9]+\.[0-9]+' <<<"$page" \
     | grep -oE '[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
   if [[ -n "$latest" ]]; then
     log "Latest RHEL release: ${latest} (pinned: ${RHEL_VERSION})"
@@ -92,6 +132,11 @@ os_release_check_rhel() {
   else
     warn "Could not determine the latest RHEL release; using pin ${RHEL_VERSION}."
   fi
+  # Kernel: the GA kernel NVR of the newest minor, from the same public
+  # article (z-stream kernels are subscriber-visible via errata, not here).
+  kern="$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+-[0-9]+(\.[0-9]+)*\.el[0-9]+(_[0-9]+)?' <<<"$page" \
+    | sort -uV | tail -1 || true)"
+  os_kernel_report "rhel" "${RHEL_KERNEL}" "$kern"
   log "RHEL media needs a Red Hat login (customer or no-cost Developer"
   log "Subscription): https://developers.redhat.com/products/rhel/download"
 }

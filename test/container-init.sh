@@ -125,12 +125,16 @@ out="$(as_dev ./common/scripts/00-install-plan.sh --os bogus 2>&1)"; rc=$?
 set -e
 [[ $rc -ne 0 ]] || fail "test 9: unknown OS must be rejected"
 grep -q "unknown OS 'bogus'" <<<"$out" || fail "test 9: missing catalog rejection message"
-out="$(as_dev ./common/scripts/00-install-plan.sh --check-releases --os rocky,windows-11-pro --no-backup 2>&1)" \
+out="$(as_dev ./common/scripts/00-install-plan.sh --check-releases --os rocky,qubes,windows-11-pro --no-backup 2>&1)" \
   || { echo "$out" | tail -20; fail "test 9: release-check run exited non-zero"; }
 grep -qE "Latest Rocky Linux release|Could not determine the latest Rocky" <<<"$out" \
   || fail "test 9: Rocky release check did not run"
 grep -qE "Newest Windows 11 version|Could not determine the latest Windows 11" <<<"$out" \
   || fail "test 9: Windows 11 release check did not run"
-echo "  PASS: unknown OS rejected; Rocky + Windows 11 release checks wired"
+grep -qE "rocky: (latest supported kernel|could not determine the latest supported kernel)" <<<"$out" \
+  || fail "test 9: Rocky kernel precheck did not run"
+grep -qE "qubes \(dom0\): (latest supported kernel|could not determine the latest supported kernel)" <<<"$out" \
+  || fail "test 9: Qubes dom0 kernel precheck did not run"
+echo "  PASS: unknown OS rejected; Rocky/Qubes/Windows 11 release + kernel prechecks wired"
 
 echo "### [done] all assertions passed"

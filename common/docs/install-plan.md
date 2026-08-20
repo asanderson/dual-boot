@@ -38,7 +38,13 @@ this is the boot-specific safety net, not a replacement.
 
 Pins live in [`common/config/os-catalog.env`](../config/os-catalog.env);
 per-OS behavior in `common/lib/oses.sh`. Release checks report drift against
-the pins; media handling varies honestly by vendor:
+the pins — including each OS's **latest supported kernel**: the dom0 default
+kernel plus the `kernel-latest` track for Qubes (from the r4.3 stable repo),
+the Debian-12 6.1.y signed-image line for PureOS (from the pool listing),
+the live EL10 z-stream `kernel-core` for Rocky (from BaseOS), and the GA
+kernel of the newest minor for RHEL (from the public release-dates article;
+z-stream kernels are subscriber-gated). Media handling varies honestly by
+vendor:
 
 | OS | Release check | Install media | Verification |
 |---|---|---|---|
