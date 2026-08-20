@@ -9,6 +9,8 @@ plan script asks (or takes flags for) exactly those decisions:
 | Which operating systems | one prompt per catalog OS | `--os LIST` (else the default set) |
 | Clean install vs upgrade, per OS | prompt, **defaults to upgrade** | `--mode OS=install\|upgrade` (else upgrade — a destructive mode is never an unattended default) |
 | Back up existing boot devices/partitions first | prompt, defaults to **yes** | `--backup` / `--no-backup` (else yes — the backup only writes new files) |
+| Keep Secure Boot enforced | prompt, defaults to **yes** | `--secure-boot` / `--no-secure-boot` (else yes — a plan decision only, nothing is flashed) |
+| Encrypt OS disks at install time | prompt, defaults to **yes** | `--encrypt` / `--no-encrypt` (else yes — enacted by the OS installers) |
 | Boot partition size | editable, default 2 GiB | `--boot-size GIB` |
 | Target disk | device default | `--disk DEV` |
 
@@ -23,6 +25,23 @@ confirmed prompt interactively).
 
 The same flag vocabulary is shared by every script in the repo
 (`common/lib/args.sh`); each script's `--help` lists the subset it accepts.
+
+## Secure Boot and disk encryption
+
+Both are **plan decisions the device flows honor** — the plan script itself
+changes nothing. How each device honors them varies honestly by hardware:
+
+| Device | Secure Boot | Disk encryption |
+|---|---|---|
+| **MSI Raider 18 HX AI** | UEFI Secure Boot stays ON — the NVIDIA driver flow enrolls a MOK, so no need to disable it; `10-nvidia-driver.sh` verifies `mokutil --sb-state` against the plan | choose LUKS in the Ubuntu installer (Windows keeps BitLocker); verified post-install via `lsblk` |
+| **MacBook Pro 14,3** | pre-T2 Apple has **no UEFI Secure Boot for Linux** — a Secure Boot requirement is reported as unenforceable, never silently ignored | choose LUKS in the Ubuntu installer; verified post-install via `lsblk` |
+| **Librem 14 v1** | **PureBoot/Heads supersedes UEFI Secure Boot** (TPM-sealed HOTP tamper check + GPG-signed `/boot`); the requirement is satisfied by re-signing `/boot` after installs | Qubes encrypts by default; select encryption explicitly in the PureOS installer; the shared `/boot` stays unencrypted and is PureBoot-signed instead |
+
+Encryption is enacted **at OS install time** by each installer (LUKS on
+Linux, BitLocker on Windows) — retrofitting later means a reinstall or a
+full backup/restore cycle, which is why the plan asks up front and the
+post-install scripts verify (`verify_security_plan` in `common/lib/plan.sh`)
+rather than attempt conversion.
 
 ## The boot-state backup
 

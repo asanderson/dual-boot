@@ -12,14 +12,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # shellcheck source=../../../common/lib/common.sh
 source "${REPO_ROOT}/common/lib/common.sh"
+# shellcheck source=../../../common/lib/plan.sh
+source "${REPO_ROOT}/common/lib/plan.sh"
 
 usage() {
-  echo "Usage: $0 [--check-releases]"
+  echo "Usage: $0 [--check-releases] [--secure-boot|--no-secure-boot]"
+  echo "          [--encrypt|--no-encrypt] [--plan-file FILE]"
   usage_common_flags
 }
 
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
-COMMON_ARGS_ACCEPT="check-releases"
+COMMON_ARGS_ACCEPT="check-releases secure-boot encrypt plan-file"
 parse_common_args "$@"
 
 main() {
@@ -96,6 +99,13 @@ main() {
   elif confirm "Check for the latest Ubuntu release and kernel patches now (common/ubuntu/scripts/20-kernel.sh)?" y; then
     "$kernel_script" --check-releases
   fi
+
+  # Read-only check against the common plan. Pre-T2 Apple hardware has no
+  # UEFI Secure Boot for Linux, so a Secure Boot requirement is reported as
+  # unenforceable rather than checked; encryption is the Ubuntu installer's
+  # LUKS choice and is verifiable.
+  section "Security plan verification (Secure Boot + encryption)"
+  verify_security_plan --no-uefi-sb
 
   section "Done"
   ok "Mac hardware setup complete."

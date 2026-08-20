@@ -44,8 +44,10 @@ jobs:
         # (6) the Librem 14 dual-install script refuses on non-Purism
         # hardware before anything destructive; (7) --destructive does not
         # bypass that gate, and --help documents both flags; (8) the common
-        # install-plan script honors defaults + flags in the written plan,
-        # never defaults to a destructive mode unattended, and documents
+        # install-plan script honors defaults + flags in the written plan —
+        # including the secure-boot and disk-encryption decisions, which
+        # default to secure — never defaults to a destructive mode
+        # unattended, and documents
         # the shared flag vocabulary; (9) it rejects OSes outside the
         # catalog and its Rocky/Qubes/Windows 11 release checks — including
         # the latest-supported-kernel prechecks — are wired.

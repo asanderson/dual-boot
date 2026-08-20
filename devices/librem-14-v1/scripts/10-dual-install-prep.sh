@@ -9,13 +9,16 @@
 # nothing on the internal SSD is preserved.
 #
 # Usage: 10-dual-install-prep.sh [--check-releases] [--destructive]
-#                                [--backup|--no-backup] [--disk DEV]
+#                                [--backup|--no-backup]
+#                                [--secure-boot|--no-secure-boot]
+#                                [--encrypt|--no-encrypt] [--disk DEV]
 #                                [--boot-size GIB] [--download-dir DIR]
 #                                [--usb-qubes DEV] [--usb-pureos DEV]
 #                                [--plan-file FILE]
 #
 # Honors a plan written by common/scripts/00-install-plan.sh (boot size,
-# backup decision, target disk); explicit flags override the plan. The
+# backup decision, Secure Boot, disk encryption, target disk); explicit
+# flags override the plan. The
 # shared contract applies: interactive runs check releases first and confirm
 # the wipe (default YES — this device's documented default); unattended runs
 # check only with --check-releases and NEVER touch the disk without
@@ -41,13 +44,14 @@ source "${DEVICE_DIR}/config/versions.env"
 
 usage() {
   echo "Usage: $0 [--check-releases] [--destructive] [--backup|--no-backup]"
+  echo "          [--secure-boot|--no-secure-boot] [--encrypt|--no-encrypt]"
   echo "          [--disk DEV] [--boot-size GIB] [--download-dir DIR]"
   echo "          [--usb-qubes DEV] [--usb-pureos DEV] [--plan-file FILE]"
   usage_common_flags
 }
 
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
-COMMON_ARGS_ACCEPT="check-releases destructive backup disk boot-size download-dir usb plan-file"
+COMMON_ARGS_ACCEPT="check-releases destructive backup secure-boot encrypt disk boot-size download-dir usb plan-file"
 parse_common_args "$@"
 
 # Honor a plan from 00-install-plan.sh: plan values become the defaults for
@@ -58,6 +62,8 @@ apply_plan() {
   source "$PLAN_FILE"
   log "Honoring plan ${PLAN_FILE} (flags on this invocation override it)."
   [[ -z "${BACKUP}" && -n "${DUAL_BOOT_PLAN_BACKUP:-}" ]] && BACKUP="${DUAL_BOOT_PLAN_BACKUP}"
+  [[ -z "${SECURE_BOOT}" && -n "${DUAL_BOOT_PLAN_SECURE_BOOT:-}" ]] && SECURE_BOOT="${DUAL_BOOT_PLAN_SECURE_BOOT}"
+  [[ -z "${ENCRYPT_DISKS}" && -n "${DUAL_BOOT_PLAN_ENCRYPT:-}" ]] && ENCRYPT_DISKS="${DUAL_BOOT_PLAN_ENCRYPT}"
   [[ -z "${BOOT_GIB_SET}" && -n "${DUAL_BOOT_PLAN_BOOT_GIB:-}" ]] && BOOT_GIB="${DUAL_BOOT_PLAN_BOOT_GIB}"
   [[ -z "${TARGET_DISK_SET}" && -n "${DUAL_BOOT_PLAN_DISK:-}" ]] && TARGET_DISK="${DUAL_BOOT_PLAN_DISK}"
   if [[ -n "${DUAL_BOOT_PLAN_OSES:-}" && "${DUAL_BOOT_PLAN_OSES}" != *qubes* ]]; then
@@ -124,6 +130,37 @@ main() {
     log "  microcode by design."
     log "EC-managed input/battery/fans: install the librem-ec-acpi DKMS driver"
     log "  on the installed OSes (dom0 for Qubes) — see the runbook quirks."
+  fi
+
+  # ---- Security plan (Secure Boot + disk encryption) --------------------------
+  section "Security plan (Secure Boot + disk encryption)"
+  if [[ -z "${SECURE_BOOT}" ]]; then
+    plan_secure_boot_decide
+    SECURE_BOOT="$PLAN_SECURE_BOOT"
+  fi
+  if [[ "${SECURE_BOOT}" == "1" ]]; then
+    log "Verified boot: this device has NO UEFI Secure Boot — PureBoot/Heads"
+    log "  supersedes it (TPM-sealed HOTP tamper check + GPG-signed /boot,"
+    log "  verified with the Librem Key). The plan's requirement is satisfied;"
+    log "  re-sign /boot in PureBoot after both installs."
+  else
+    warn "Plan says Secure Boot is not required — note PureBoot's verified boot"
+    warn "  stays active regardless (it IS this device's firmware); disabling it"
+    warn "  would mean reflashing stock coreboot, which this repo does not do."
+  fi
+  if [[ -z "${ENCRYPT_DISKS}" ]]; then
+    plan_encrypt_decide
+    ENCRYPT_DISKS="$PLAN_ENCRYPT"
+  fi
+  if [[ "${ENCRYPT_DISKS}" == "1" ]]; then
+    log "Disk encryption: choose LUKS in BOTH installers — Qubes encrypts by"
+    log "  default; in the PureOS installer explicitly select encryption for"
+    log "  its partition. /boot (partition 1) stays unencrypted and is signed"
+    log "  by PureBoot instead."
+  else
+    warn "Plan says NO disk encryption: deselect it in both installers if you"
+    warn "  really want that — on an anti-interdiction unit this is strongly"
+    warn "  discouraged (the runbook and partition labels assume LUKS)."
   fi
 
   # ---- Release checks (interactive always; unattended only with the flag) ----

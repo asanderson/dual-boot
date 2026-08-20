@@ -7,12 +7,16 @@
 # common/config/os-catalog.env — Ubuntu, Qubes OS, PureOS, Rocky Linux,
 # RHEL, Windows 11 Pro/Home), whether each is a clean (destructive) install
 # or an in-place upgrade, whether existing boot devices/partitions are
-# backed up first, the boot partition size, and the target disk. Then runs
-# the release checks for the chosen OSes and (if selected) performs the
+# backed up first, whether Secure Boot (or the device's verified-boot
+# equivalent) stays enforced, whether OS disks are encrypted at install
+# time, the boot partition size, and the target disk. Then runs the
+# release checks for the chosen OSes and (if selected) performs the
 # non-destructive boot-state backup.
 #
 # Usage: 00-install-plan.sh [--check-releases] [--os LIST] [--mode OS=MODE]
-#                           [--backup|--no-backup] [--disk DEV]
+#                           [--backup|--no-backup]
+#                           [--secure-boot|--no-secure-boot]
+#                           [--encrypt|--no-encrypt] [--disk DEV]
 #                           [--boot-size GIB] [--plan-file FILE]
 #
 # Contract (same as every script here): interactive runs prompt for each
@@ -36,10 +40,11 @@ source "${COMMON_DIR}/lib/oses.sh"
 source "${COMMON_DIR}/lib/plan.sh"
 
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
-COMMON_ARGS_ACCEPT="check-releases os mode backup disk boot-size plan-file"
+COMMON_ARGS_ACCEPT="check-releases os mode backup secure-boot encrypt disk boot-size plan-file"
 
 usage() {
   echo "Usage: $0 [--check-releases] [--os LIST] [--mode OS=MODE] [--backup|--no-backup]"
+  echo "          [--secure-boot|--no-secure-boot] [--encrypt|--no-encrypt]"
   echo "          [--disk DEV] [--boot-size GIB] [--plan-file FILE]"
   usage_common_flags
 }
@@ -57,6 +62,12 @@ main() {
 
   section "Boot-state backup"
   plan_backup_decide
+
+  section "Secure Boot"
+  plan_secure_boot_decide
+
+  section "Disk encryption"
+  plan_encrypt_decide
 
   section "Boot partition size"
   plan_boot_size_decide
