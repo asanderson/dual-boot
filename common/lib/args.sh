@@ -18,6 +18,11 @@
 #   BACKUP           "" (prompt later), 1 (--backup) or 0 (--no-backup).
 #   SECURE_BOOT      "" (prompt later), 1 (--secure-boot) or 0 (--no-secure-boot).
 #   ENCRYPT_DISKS    "" (prompt later), 1 (--encrypt) or 0 (--no-encrypt).
+#   WIFI_SSID        network name from --wifi-ssid, or "".
+#   WIFI_PASSWORD    from --wifi-password (or DUAL_BOOT_WIFI_PASSWORD env,
+#                    which keeps the secret out of shell history/ps).
+#   WIFI_SECURITY    from --wifi-security: wpa-psk (default), sae, or open.
+#   WIFI_HIDDEN      1 when --wifi-hidden was passed.
 #   OS_SELECTION     comma-separated list from --os, or "".
 #   MODE_SELECTION   comma-separated OS=install|upgrade pairs from --mode.
 #   TARGET_DISK, BOOT_GIB, DOWNLOAD_DIR, USB_QUBES, USB_PUREOS
@@ -33,6 +38,10 @@ parse_common_args() {
   BACKUP=""
   SECURE_BOOT=""
   ENCRYPT_DISKS=""
+  WIFI_SSID=""
+  WIFI_PASSWORD=""
+  WIFI_SECURITY=""
+  WIFI_HIDDEN=""
   OS_SELECTION=""
   MODE_SELECTION=""
   TARGET_DISK="${TARGET_DISK:-${TARGET_DISK_DEFAULT:-}}"
@@ -53,6 +62,10 @@ parse_common_args() {
       --no-secure-boot) _arg_accepted secure-boot "$1";    SECURE_BOOT=0 ;;
       --encrypt)        _arg_accepted encrypt "$1";        ENCRYPT_DISKS=1 ;;
       --no-encrypt)     _arg_accepted encrypt "$1";        ENCRYPT_DISKS=0 ;;
+      --wifi-ssid)      _arg_accepted wifi "$1";  WIFI_SSID="${2:?--wifi-ssid needs a network name}"; shift ;;
+      --wifi-password)  _arg_accepted wifi "$1";  WIFI_PASSWORD="${2:?--wifi-password needs a value}"; shift ;;
+      --wifi-security)  _arg_accepted wifi "$1";  WIFI_SECURITY="${2:?--wifi-security needs wpa-psk|sae|open}"; shift ;;
+      --wifi-hidden)    _arg_accepted wifi "$1";  WIFI_HIDDEN=1 ;;
       --os)             _arg_accepted os "$1";        OS_SELECTION="${2:?--os needs a comma-separated OS list}"; shift ;;
       --mode)           _arg_accepted mode "$1";      MODE_SELECTION="${MODE_SELECTION:+${MODE_SELECTION},}${2:?--mode needs OS=install|upgrade}"; shift ;;
       --disk)           _arg_accepted disk "$1";      TARGET_DISK="${2:?--disk needs a device}"; TARGET_DISK_SET=1; shift ;;
@@ -98,6 +111,15 @@ usage_common_flags() {
     echo "                       encrypt the OS disks/partitions at install time (LUKS"
     echo "                       on Linux, BitLocker on Windows), or not"
     echo "                       (default: prompted, yes)"
+  fi
+  if [[ "$accept" == *" wifi "* ]]; then
+    echo "  --wifi-ssid NAME     Wi-Fi network to configure on the installed systems"
+    echo "  --wifi-password PW   its password (or set DUAL_BOOT_WIFI_PASSWORD to keep"
+    echo "                       the secret out of shell history); prompted (hidden)"
+    echo "                       interactively when omitted"
+    echo "  --wifi-security T    wpa-psk (default, WPA2/WPA3 Personal), sae (WPA3"
+    echo "                       only), or open"
+    echo "  --wifi-hidden        the network does not broadcast its SSID"
   fi
   if [[ "$accept" == *" os "* ]]; then
     echo "  --os LIST            comma-separated OSes to plan for; catalog:"

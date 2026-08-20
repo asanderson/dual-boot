@@ -11,6 +11,7 @@ plan script asks (or takes flags for) exactly those decisions:
 | Back up existing boot devices/partitions first | prompt, defaults to **yes** | `--backup` / `--no-backup` (else yes — the backup only writes new files) |
 | Keep Secure Boot enforced | prompt, defaults to **yes** | `--secure-boot` / `--no-secure-boot` (else yes — a plan decision only, nothing is flashed) |
 | Encrypt OS disks at install time | prompt, defaults to **yes** | `--encrypt` / `--no-encrypt` (else yes — enacted by the OS installers) |
+| Wi-Fi for the installed systems | prompt (default: none); SSID, password (hidden input), security type, hidden-network | `--wifi-ssid` / `--wifi-password` (or `DUAL_BOOT_WIFI_PASSWORD`) / `--wifi-security wpa-psk\|sae\|open` / `--wifi-hidden` (planned only when an SSID is given) |
 | Boot partition size | editable, default 2 GiB | `--boot-size GIB` |
 | Target disk | device default | `--disk DEV` |
 
@@ -42,6 +43,25 @@ Linux, BitLocker on Windows) — retrofitting later means a reinstall or a
 full backup/restore cycle, which is why the plan asks up front and the
 post-install scripts verify (`verify_security_plan` in `common/lib/plan.sh`)
 rather than attempt conversion.
+
+## Wi-Fi
+
+When the plan carries Wi-Fi settings, the device scripts **configure them
+automatically** via NetworkManager (`wifi_apply_plan` in
+`common/lib/plan.sh`): the profile is (re)created idempotently with
+autoconnect on, activation is attempted only when a Wi-Fi device is
+visible, and the step runs **before** each script's network check — so on
+a fresh install the plan's Wi-Fi can be exactly what brings the machine
+online. Honest limits: on **Qubes OS** networking lives in `sys-net`, so
+dom0 prints the `qvm-run … nmcli` instructions instead of configuring
+anything; systems without NetworkManager get a manual-config warning.
+
+Because the plan file can carry the Wi-Fi password, `plan_write` always
+writes it **mode 600**, the password is prompted with echo off, never
+logged or shown in summaries, and `DUAL_BOOT_WIFI_PASSWORD` is accepted in
+place of `--wifi-password` to keep the secret out of shell history.
+(NetworkManager itself stores the PSK root-readable under
+`/etc/NetworkManager/system-connections` — the same trust level.)
 
 ## The boot-state backup
 

@@ -9,14 +9,18 @@
 # or an in-place upgrade, whether existing boot devices/partitions are
 # backed up first, whether Secure Boot (or the device's verified-boot
 # equivalent) stays enforced, whether OS disks are encrypted at install
-# time, the boot partition size, and the target disk. Then runs the
-# release checks for the chosen OSes and (if selected) performs the
-# non-destructive boot-state backup.
+# time, the Wi-Fi settings the installed systems should get (SSID,
+# password, security type, hidden-network — applied by the device scripts
+# via NetworkManager), the boot partition size, and the target disk. Then
+# runs the release checks for the chosen OSes and (if selected) performs
+# the non-destructive boot-state backup.
 #
 # Usage: 00-install-plan.sh [--check-releases] [--os LIST] [--mode OS=MODE]
 #                           [--backup|--no-backup]
 #                           [--secure-boot|--no-secure-boot]
-#                           [--encrypt|--no-encrypt] [--disk DEV]
+#                           [--encrypt|--no-encrypt] [--wifi-ssid NAME]
+#                           [--wifi-password PW] [--wifi-security T]
+#                           [--wifi-hidden] [--disk DEV]
 #                           [--boot-size GIB] [--plan-file FILE]
 #
 # Contract (same as every script here): interactive runs prompt for each
@@ -40,12 +44,13 @@ source "${COMMON_DIR}/lib/oses.sh"
 source "${COMMON_DIR}/lib/plan.sh"
 
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
-COMMON_ARGS_ACCEPT="check-releases os mode backup secure-boot encrypt disk boot-size plan-file"
+COMMON_ARGS_ACCEPT="check-releases os mode backup secure-boot encrypt wifi disk boot-size plan-file"
 
 usage() {
   echo "Usage: $0 [--check-releases] [--os LIST] [--mode OS=MODE] [--backup|--no-backup]"
   echo "          [--secure-boot|--no-secure-boot] [--encrypt|--no-encrypt]"
-  echo "          [--disk DEV] [--boot-size GIB] [--plan-file FILE]"
+  echo "          [--wifi-ssid NAME] [--wifi-password PW] [--wifi-security T]"
+  echo "          [--wifi-hidden] [--disk DEV] [--boot-size GIB] [--plan-file FILE]"
   usage_common_flags
 }
 
@@ -68,6 +73,9 @@ main() {
 
   section "Disk encryption"
   plan_encrypt_decide
+
+  section "Wi-Fi (installed systems)"
+  plan_wifi_decide
 
   section "Boot partition size"
   plan_boot_size_decide

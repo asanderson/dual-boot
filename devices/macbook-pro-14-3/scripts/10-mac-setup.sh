@@ -17,12 +17,13 @@ source "${REPO_ROOT}/common/lib/plan.sh"
 
 usage() {
   echo "Usage: $0 [--check-releases] [--secure-boot|--no-secure-boot]"
-  echo "          [--encrypt|--no-encrypt] [--plan-file FILE]"
+  echo "          [--encrypt|--no-encrypt] [--wifi-ssid NAME] [--wifi-password PW]"
+  echo "          [--wifi-security T] [--wifi-hidden] [--plan-file FILE]"
   usage_common_flags
 }
 
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
-COMMON_ARGS_ACCEPT="check-releases secure-boot encrypt plan-file"
+COMMON_ARGS_ACCEPT="check-releases secure-boot encrypt wifi plan-file"
 parse_common_args "$@"
 
 main() {
@@ -38,6 +39,13 @@ main() {
   ok "Running on ${product}."
 
   require_sudo
+
+  # Wi-Fi first (from the common plan / --wifi-* flags): on a fresh install
+  # this can be exactly what brings the network up for everything below
+  # (the BCM43602 works out of the box with current linux-firmware).
+  section "Wi-Fi configuration (from the plan)"
+  wifi_apply_plan
+
   require_network
 
   # ---- Firmware & driver update prechecks ------------------------------------
