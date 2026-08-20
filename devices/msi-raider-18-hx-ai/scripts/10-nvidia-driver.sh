@@ -6,6 +6,14 @@
 # production branch and explicitly lists the RTX 5090 Laptop GPU; the older
 # 580 branch (CUDA 13.x era) also supports Blackwell.
 #
+# Usage: 10-nvidia-driver.sh [--check-releases]
+#
+# Firmware/driver prechecks follow the repo's release-check contract:
+# interactive runs check FIRST (BIOS/firmware via fwupd, plus whether an
+# installed NVIDIA driver has a newer package or branch); non-interactive
+# runs (DEV_SETUP_ASSUME_YES=1) check only with --check-releases, and
+# firmware is never flashed unattended.
+#
 # Run, reboot, then verify with: nvidia-smi
 
 set -euo pipefail
@@ -18,6 +26,24 @@ source "${REPO_ROOT}/common/lib/common.sh"
 # shellcheck source=../config/versions.env
 source "${DEVICE_DIR}/config/versions.env"
 
+usage() {
+  echo "Usage: $0 [--check-releases]"
+  echo "  --check-releases   in non-interactive mode (DEV_SETUP_ASSUME_YES=1), also"
+  echo "                     run the firmware and driver update prechecks"
+  echo "                     (interactive mode always prechecks first)"
+}
+
+CHECK_RELEASES=""
+for arg in "$@"; do
+  case "$arg" in
+    --check-releases) CHECK_RELEASES=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) err "Unknown argument: $arg"; usage; exit 2 ;;
+  esac
+done
+[[ "${DEV_SETUP_ASSUME_YES:-0}" != "1" ]] && CHECK_RELEASES=1
+CHECK_RELEASES="${CHECK_RELEASES:-0}"
+
 main() {
   require_not_root
   require_ubuntu "26.04"
@@ -28,6 +54,33 @@ main() {
 
   if ! lspci -nn 2>/dev/null | grep -qi 'nvidia'; then
     die "No NVIDIA GPU visible on PCI. If this is the Raider, check BIOS GPU/hybrid settings."
+  fi
+
+  # ---- Firmware & driver update prechecks -----------------------------------
+  if [[ "$CHECK_RELEASES" != "1" ]]; then
+    log "Firmware/driver update prechecks skipped (non-interactive run without --check-releases)."
+  else
+    section "Firmware update precheck"
+    apt_update_once
+    firmware_update_check
+    log "MSI publishes Raider BIOS/EC updates through MSI Center (on the Windows"
+    log "side) or USB flash from msi.com — those vendor channels aren't automated"
+    log "here; check them when fwupd/LVFS shows nothing."
+
+    section "NVIDIA driver update precheck"
+    local installed_pkg inst cand
+    installed_pkg="$(dpkg -l 'nvidia-driver-*' 2>/dev/null | awk '/^ii/{print $2; exit}' || true)"
+    if [[ -n "$installed_pkg" ]]; then
+      inst="$(apt-cache policy "$installed_pkg" | awk '/Installed:/{print $2}')"
+      cand="$(apt-cache policy "$installed_pkg" | awk '/Candidate:/{print $2}')"
+      if [[ -n "$cand" && "$cand" != "$inst" ]]; then
+        warn "${installed_pkg}: newer package available (${inst} -> ${cand}) — continuing below installs it."
+      else
+        ok "${installed_pkg} ${inst} is current for its branch (a newer BRANCH shows under 'Detected driver options' below)."
+      fi
+    else
+      log "No NVIDIA driver installed yet — fresh install below."
+    fi
   fi
 
   # ---- Secure Boot ---------------------------------------------------------

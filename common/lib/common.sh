@@ -117,6 +117,37 @@ add_apt_repo() {
 }
 
 # ---------------------------------------------------------------------------
+# Firmware
+# ---------------------------------------------------------------------------
+# Report the installed BIOS/firmware version and check LVFS via fwupd for
+# pending firmware updates. REPORT-ONLY unless the user confirms: the apply
+# prompt defaults to NO, so unattended runs (which take defaults) never
+# flash firmware. Callers add their vendor-channel notes after this.
+firmware_update_check() {
+  local bios_ver updates
+  bios_ver="$(cat /sys/class/dmi/id/bios_version 2>/dev/null || echo unknown)"
+  log "Installed BIOS/firmware version: ${bios_ver}"
+  command_exists fwupdmgr || apt_install fwupd
+  if fwupdmgr refresh --force >/dev/null 2>&1; then
+    updates="$(fwupdmgr get-updates 2>/dev/null || true)"
+    if grep -qiE 'new version|upgrade available' <<<"$updates"; then
+      warn "fwupd reports firmware updates available:"
+      printf '%s\n' "$updates" | sed 's/^/    /'
+      if confirm "Apply these firmware updates via fwupd now (may need a reboot)?" n; then
+        sudo fwupdmgr update
+      else
+        log "Not applied — run 'fwupdmgr update' when ready."
+      fi
+    else
+      ok "No pending firmware updates via fwupd/LVFS."
+    fi
+  else
+    warn "fwupd could not query LVFS here (no daemon or no network) —"
+    warn "check manually later with 'fwupdmgr refresh && fwupdmgr get-updates'."
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Misc
 # ---------------------------------------------------------------------------
 # Fetch a URL to stdout with retries.

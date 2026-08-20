@@ -39,7 +39,10 @@ jobs:
         # runs the Ubuntu release check and installs the newest packaged
         # kernel; (3) the device driver script fails gracefully with no GPU;
         # (4) the Mac device script refuses to run on non-Apple hardware;
-        # (5) the macOS-side OCLP script refuses to run on Linux.
+        # (5) the macOS-side OCLP script refuses to run on Linux;
+        # (6) the Librem 14 dual-install script refuses on non-Purism
+        # hardware before anything destructive; (7) --destructive does not
+        # bypass that gate, and --help documents both flags.
         run: ./test/container-test.sh
 
   gpu-path:

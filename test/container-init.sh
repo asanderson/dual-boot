@@ -81,4 +81,24 @@ set -e
 grep -q "This script runs on macOS" <<<"$out" || fail "test 5: missing wrong-OS message"
 echo "  PASS: exited ${rc} with the wrong-OS message"
 
+echo "### [test 6] 10-dual-install-prep.sh on non-Purism hardware: must refuse"
+set +e
+out="$(as_dev ./devices/librem-14-v1/scripts/10-dual-install-prep.sh 2>&1)"; rc=$?
+set -e
+[[ $rc -ne 0 ]] || fail "test 6: expected non-zero exit on non-Librem hardware"
+grep -q "This script targets the Librem 14" <<<"$out" || fail "test 6: missing wrong-hardware message"
+grep -qE "WIPE|sgdisk|GPT layout" <<<"$out" && fail "test 6: destructive path reached despite wrong hardware"
+echo "  PASS: exited ${rc} with the wrong-hardware message, nothing destructive reached"
+
+echo "### [test 7] 10-dual-install-prep.sh --destructive on wrong hardware: gate still wins"
+set +e
+out="$(as_dev ./devices/librem-14-v1/scripts/10-dual-install-prep.sh --destructive 2>&1)"; rc=$?
+set -e
+[[ $rc -ne 0 ]] || fail "test 7: --destructive must not bypass the hardware gate"
+grep -q "This script targets the Librem 14" <<<"$out" || fail "test 7: missing wrong-hardware message"
+out="$(as_dev ./devices/librem-14-v1/scripts/10-dual-install-prep.sh --help 2>&1)" || fail "test 7: --help exited non-zero"
+grep -q -- "--destructive" <<<"$out" || fail "test 7: --help does not document --destructive"
+grep -q -- "--check-releases" <<<"$out" || fail "test 7: --help does not document --check-releases"
+echo "  PASS: hardware gate precedes --destructive; --help documents both flags"
+
 echo "### [done] all assertions passed"
