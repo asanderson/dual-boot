@@ -42,15 +42,20 @@ boot works out of the box.
 
 ```bash
 cd ~/dual-boot
-./devices/macbook-pro-14-3/scripts/10-mac-setup.sh   # Wi-Fi firmware, fans, inputs,
+./devices/macbook-pro-14-3/scripts/10-mac-setup.sh   # firmware/driver prechecks first,
+                                                     #   then Wi-Fi firmware, fans, inputs,
                                                      #   then Ubuntu/kernel release check
 ```
 
-Both scripts prompt interactively by default; unattended runs
-(`DEV_SETUP_ASSUME_YES=1`) take each prompt's default and skip the release
-checks unless `--check-releases` is passed — the same contract as
-`common/ubuntu/scripts/20-kernel.sh`. The macOS Sequoia upgrade itself is
-never started unattended (it's a guided GUI flow).
+The Linux-side script **prechecks firmware and driver updates first**: an
+fwupd/LVFS query plus a `linux-firmware` package update check (Apple EFI/SMC
+firmware itself ships only through macOS — boot the OCLP-managed macOS side
+periodically to receive it). Both scripts prompt interactively by default;
+unattended runs (`DEV_SETUP_ASSUME_YES=1`) take each prompt's default and
+skip the prechecks/release checks unless `--check-releases` is passed — the
+same contract as `common/ubuntu/scripts/20-kernel.sh`. Firmware is never
+flashed unattended, and the macOS Sequoia upgrade itself is never started
+unattended (it's a guided GUI flow).
 
 - Pinned versions: [`config/versions.env`](config/versions.env)
   (OpenCore Legacy Patcher release).

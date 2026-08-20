@@ -27,9 +27,18 @@ Follow the [common Windows → Ubuntu runbook](../../common/windows-to-ubuntu/do
 
 ```bash
 cd ~/dual-boot
-./devices/msi-raider-18-hx-ai/scripts/10-nvidia-driver.sh   # driver + MOK, then REBOOT
+./devices/msi-raider-18-hx-ai/scripts/10-nvidia-driver.sh   # firmware/driver prechecks,
+                                                            #   driver + MOK, then REBOOT
 ./common/ubuntu/scripts/20-kernel.sh             # releases, patches, 7.0+ check
 ```
+
+The driver script **prechecks firmware and driver updates first**: BIOS/EC
+version + an fwupd/LVFS query (MSI's own BIOS channel is MSI Center on the
+Windows side or USB flash from msi.com), and whether an already-installed
+NVIDIA driver has a newer package or branch. Interactive runs always
+precheck; unattended runs (`DEV_SETUP_ASSUME_YES=1`) only with
+`--check-releases`, and firmware is never flashed unattended — the same
+contract as `20-kernel.sh`.
 
 - **[NVIDIA driver guide](docs/nvidia-driver.md)** — Blackwell requires the
   open kernel modules (R595 branch); covers MOK enrollment, verification, and

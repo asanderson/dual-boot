@@ -16,8 +16,9 @@ source "${REPO_ROOT}/common/lib/common.sh"
 usage() {
   echo "Usage: $0 [--check-releases]"
   echo "  --check-releases   in non-interactive mode (DEV_SETUP_ASSUME_YES=1),"
-  echo "                     also run the shared Ubuntu/kernel release check"
-  echo "                     (interactive mode always offers it)"
+  echo "                     also run the firmware/driver update prechecks and"
+  echo "                     the shared Ubuntu/kernel release check"
+  echo "                     (interactive mode always runs/offers them)"
 }
 
 CHECK_RELEASES=""
@@ -45,6 +46,23 @@ main() {
 
   require_sudo
   require_network
+
+  # ---- Firmware & driver update prechecks ------------------------------------
+  if [[ "$CHECK_RELEASES" != "1" ]]; then
+    log "Firmware/driver update prechecks skipped (non-interactive run without --check-releases)."
+  else
+    section "Firmware update precheck"
+    apt_update_once
+    firmware_update_check
+    log "Apple EFI/SMC firmware updates ship only through macOS — boot the"
+    log "OCLP-managed macOS side periodically so it can receive them."
+    if apt list --upgradable 2>/dev/null | grep -q '^linux-firmware/'; then
+      warn "A newer linux-firmware package is available (Wi-Fi/GPU device firmware)."
+      if confirm "Update linux-firmware now?" y; then apt_install linux-firmware; fi
+    else
+      ok "linux-firmware is current (drivers themselves update with the kernel — checked at the end)."
+    fi
+  fi
 
   # ---- Wi-Fi / Bluetooth (Broadcom BCM43602 via brcmfmac) -------------------
   section "Wi-Fi firmware (BCM43602 / brcmfmac)"

@@ -28,15 +28,24 @@ test/  .github/          Container test harness + CI
 |---|---|---|---|
 | MSI Raider 18 HX AI A2XWJG-069US (Core Ultra 9 285HX · RTX 5090 Laptop GPU · 64GB · 2TB NVMe) | Windows 11 Pro | Ubuntu 26.04 LTS (kernel 7.0) | [device page](devices/msi-raider-18-hx-ai/README.md) |
 | MacBook Pro 15" 2017, MacBookPro14,3 (i7-7700HQ · Radeon Pro 555/560 · 16GB) | macOS 13.7.8 Ventura → **Sequoia via OCLP** | Ubuntu 26.04 LTS (kernel 7.0) | [device page](devices/macbook-pro-14-3/README.md) |
+| Purism Librem 14 v1 (i7-10710U · 64GB DDR4 · 2TB NVMe · PureBoot Anti-Interdiction) | PureOS (**wiped** — see below) | **Qubes OS 4.3.1 + PureOS 11 "Crimson"** (clean dual install) | [device page](devices/librem-14-v1/README.md) |
 
-**The factory OS is preserved by design.** No file inside the preinstalled
-system is touched, its boot manager is never replaced (GRUB installs
-alongside), and every prep-time setting is reversible. Each pair runbook's
-Step 1.0 captures a full backup (Windows system image / Time Machine) before
-anything changes, and each ships a rollback runbook that returns the machine
-to its original preconfigured state
+**The factory OS is preserved by design** — on every device except where its
+page says otherwise. No file inside the preinstalled system is touched, its
+boot manager is never replaced (GRUB installs alongside), and every
+prep-time setting is reversible. Each pair runbook's Step 1.0 captures a
+full backup (Windows system image / Time Machine) before anything changes,
+and each ships a rollback runbook that returns the machine to its original
+preconfigured state
 ([Windows](common/windows-to-ubuntu/docs/04-rollback.md) ·
 [macOS](common/macos-to-ubuntu/docs/04-rollback.md)).
+
+**The one exception is the Librem 14**: its documented flow is a
+**destructive clean dual install** of Qubes OS + PureOS that replaces the
+factory PureOS. Interactive runs confirm the wipe (defaulting to yes, per
+that device's design); unattended runs never touch the disk without the
+explicit `--destructive` flag. "Rollback" there means reinstalling PureOS
+from a live USB — the device page says so up front.
 
 ## The path
 
@@ -57,7 +66,8 @@ git clone https://github.com/asanderson/dual-boot.git ~/dual-boot
 cd ~/dual-boot
 chmod +x common/*/scripts/*.sh devices/*/scripts/*.sh
 
-./devices/msi-raider-18-hx-ai/scripts/10-nvidia-driver.sh   # driver + MOK, then reboot
+./devices/msi-raider-18-hx-ai/scripts/10-nvidia-driver.sh   # firmware/driver prechecks,
+                                                            #   driver + MOK, then reboot
 ./common/ubuntu/scripts/20-kernel.sh             # releases, patches, 7.0+ check
                                                             #   (unattended: --check-releases)
 ```
@@ -74,7 +84,9 @@ shell scripts, a PowerShell parse of the rollback script, and a fresh Ubuntu
 26.04 container run asserting both unattended modes of `20-kernel.sh`
 (release checks skipped without `--check-releases`; Ubuntu release check +
 kernel patching with it) and the graceful no-GPU failure of the device driver
-script and the Mac device scripts (wrong-hardware / wrong-OS refusal). A
+script, the Mac device scripts (wrong-hardware / wrong-OS refusal), and the
+Librem 14 dual-install script (wrong-hardware refusal before anything
+destructive, with `--destructive` unable to bypass that gate). A
 separate **GPU-path job** stubs `lspci` as the MSI Raider's RTX 5090 so the
 driver script's GPU-present path runs for real — actual driver package
 install plus all three driver-selection branches — validating selection and
