@@ -41,7 +41,11 @@ Bluetooth, GPU device firmware), `intel-microcode` (Core Ultra 9 285HX),
 and Mesa (the Intel iGPU half of hybrid graphics). Interactive runs always
 precheck; unattended runs (`DEV_SETUP_ASSUME_YES=1`) only with
 `--check-releases`, and firmware is never flashed unattended — the same
-contract as `20-kernel.sh`.
+contract as `20-kernel.sh`. It finishes by **verifying the
+[common install plan's](../../common/docs/install-plan.md) Secure Boot and
+disk-encryption decisions** (`mokutil --sb-state`; LUKS via `lsblk`) —
+Secure Boot stays ON here because the driver flow enrolls a MOK, and
+encryption is the Ubuntu installer's LUKS choice (Windows keeps BitLocker).
 
 - **[NVIDIA driver guide](docs/nvidia-driver.md)** — Blackwell requires the
   open kernel modules (R595 branch); covers MOK enrollment, verification, and

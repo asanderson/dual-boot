@@ -16,6 +16,8 @@
 #   DESTRUCTIVE      1 only when --destructive was passed (see
 #                    destructive_gate below).
 #   BACKUP           "" (prompt later), 1 (--backup) or 0 (--no-backup).
+#   SECURE_BOOT      "" (prompt later), 1 (--secure-boot) or 0 (--no-secure-boot).
+#   ENCRYPT_DISKS    "" (prompt later), 1 (--encrypt) or 0 (--no-encrypt).
 #   OS_SELECTION     comma-separated list from --os, or "".
 #   MODE_SELECTION   comma-separated OS=install|upgrade pairs from --mode.
 #   TARGET_DISK, BOOT_GIB, DOWNLOAD_DIR, USB_QUBES, USB_PUREOS
@@ -29,6 +31,8 @@ parse_common_args() {
   CHECK_RELEASES=""
   DESTRUCTIVE=""
   BACKUP=""
+  SECURE_BOOT=""
+  ENCRYPT_DISKS=""
   OS_SELECTION=""
   MODE_SELECTION=""
   TARGET_DISK="${TARGET_DISK:-${TARGET_DISK_DEFAULT:-}}"
@@ -45,6 +49,10 @@ parse_common_args() {
       --destructive)    _arg_accepted destructive "$1";    DESTRUCTIVE=1 ;;
       --backup)         _arg_accepted backup "$1";         BACKUP=1 ;;
       --no-backup)      _arg_accepted backup "$1";         BACKUP=0 ;;
+      --secure-boot)    _arg_accepted secure-boot "$1";    SECURE_BOOT=1 ;;
+      --no-secure-boot) _arg_accepted secure-boot "$1";    SECURE_BOOT=0 ;;
+      --encrypt)        _arg_accepted encrypt "$1";        ENCRYPT_DISKS=1 ;;
+      --no-encrypt)     _arg_accepted encrypt "$1";        ENCRYPT_DISKS=0 ;;
       --os)             _arg_accepted os "$1";        OS_SELECTION="${2:?--os needs a comma-separated OS list}"; shift ;;
       --mode)           _arg_accepted mode "$1";      MODE_SELECTION="${MODE_SELECTION:+${MODE_SELECTION},}${2:?--mode needs OS=install|upgrade}"; shift ;;
       --disk)           _arg_accepted disk "$1";      TARGET_DISK="${2:?--disk needs a device}"; TARGET_DISK_SET=1; shift ;;
@@ -78,6 +86,18 @@ usage_common_flags() {
   if [[ "$accept" == *" backup "* ]]; then
     echo "  --backup|--no-backup back up the existing partition table and boot"
     echo "                       partitions first, or skip it (default: prompted, yes)"
+  fi
+  if [[ "$accept" == *" secure-boot "* ]]; then
+    echo "  --secure-boot|--no-secure-boot"
+    echo "                       keep Secure Boot (or the device's verified-boot"
+    echo "                       equivalent) enforced for the installed OSes, or not"
+    echo "                       (default: prompted, yes)"
+  fi
+  if [[ "$accept" == *" encrypt "* ]]; then
+    echo "  --encrypt|--no-encrypt"
+    echo "                       encrypt the OS disks/partitions at install time (LUKS"
+    echo "                       on Linux, BitLocker on Windows), or not"
+    echo "                       (default: prompted, yes)"
   fi
   if [[ "$accept" == *" os "* ]]; then
     echo "  --os LIST            comma-separated OSes to plan for; catalog:"

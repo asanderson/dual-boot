@@ -63,9 +63,13 @@ Release checks follow the repo contract: interactive runs always check
 first; unattended runs check only with `--check-releases` and **never** flash
 firmware or touch the disk without `--destructive`. The script honors the
 [common install plan](../../common/docs/install-plan.md) (boot size, backup
-decision, target disk — run `common/scripts/00-install-plan.sh` first);
-explicit flags override the plan, and the boot-state backup runs before the
-wipe unless declined.
+decision, Secure Boot, disk encryption, target disk — run
+`common/scripts/00-install-plan.sh` first); explicit flags
+(`--secure-boot|--no-secure-boot`, `--encrypt|--no-encrypt`, ...) override
+the plan, and the boot-state backup runs before the wipe unless declined.
+On this device the Secure Boot requirement is satisfied by **PureBoot**
+(which supersedes UEFI Secure Boot); encryption means choosing LUKS in both
+installers — Qubes defaults to it; select it explicitly for PureOS.
 
 - Pinned versions: [`config/versions.env`](config/versions.env) (Qubes ISO +
   signing chain, PureOS image + sha256, PureBoot release, disk layout).

@@ -23,16 +23,19 @@ DEVICE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # shellcheck source=../../../common/lib/common.sh
 source "${REPO_ROOT}/common/lib/common.sh"
+# shellcheck source=../../../common/lib/plan.sh
+source "${REPO_ROOT}/common/lib/plan.sh"
 # shellcheck source=../config/versions.env
 source "${DEVICE_DIR}/config/versions.env"
 
 usage() {
-  echo "Usage: $0 [--check-releases]"
+  echo "Usage: $0 [--check-releases] [--secure-boot|--no-secure-boot]"
+  echo "          [--encrypt|--no-encrypt] [--plan-file FILE]"
   usage_common_flags
 }
 
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
-COMMON_ARGS_ACCEPT="check-releases"
+COMMON_ARGS_ACCEPT="check-releases secure-boot encrypt plan-file"
 parse_common_args "$@"
 
 main() {
@@ -127,6 +130,12 @@ main() {
   if confirm "Also install the CUDA toolkit (nvcc, ~3GB — for compiling GPU code)?" n; then
     apt_install nvidia-cuda-toolkit || warn "CUDA toolkit install failed; you can use NVIDIA's cuda repo instead."
   fi
+
+  # Read-only check that this install matches the common plan's Secure Boot
+  # and encryption decisions (UEFI Secure Boot works here — drivers are
+  # MOK-signed; encryption is the Ubuntu installer's LUKS choice).
+  section "Security plan verification (Secure Boot + encryption)"
+  verify_security_plan
 
   section "Done — reboot required"
   ok "Driver installed: ${target}"

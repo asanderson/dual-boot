@@ -58,7 +58,11 @@ unattended runs (`DEV_SETUP_ASSUME_YES=1`) take each prompt's default and
 skip the prechecks/release checks unless `--check-releases` is passed — the
 same contract as `common/ubuntu/scripts/20-kernel.sh`. Firmware is never
 flashed unattended, and the macOS Sequoia upgrade itself is never started
-unattended (it's a guided GUI flow).
+unattended (it's a guided GUI flow). The Linux-side script also **verifies
+the [common install plan's](../../common/docs/install-plan.md) security
+decisions**: disk encryption (LUKS via `lsblk`) is checkable; a Secure Boot
+requirement is reported as unenforceable — pre-T2 Apple hardware has no
+UEFI Secure Boot for Linux.
 
 - Pinned versions: [`config/versions.env`](config/versions.env)
   (OpenCore Legacy Patcher release).
