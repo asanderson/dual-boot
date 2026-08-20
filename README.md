@@ -9,7 +9,14 @@ device-specific overlay** per machine:
 
 ```
 common/
-  lib/common.sh          Shared bash helpers (prompts, apt, logging)
+  lib/                   Shared bash: helpers (common.sh), the flag/prompt
+                           contract (args.sh), OS catalog behavior (oses.sh),
+                           and the constraint planner (plan.sh)
+  config/os-catalog.env  The OS catalog + latest-release pins (Ubuntu, Qubes,
+                           PureOS, Rocky, RHEL, Windows 11 Pro/Home)
+  scripts/00-install-plan.sh  Common entry point: decide which OSes,
+                           install-vs-upgrade, backups, boot size — once
+  docs/install-plan.md   The plan layer + per-OS media/verification table
   ubuntu/                Target-OS commons shared by every Ubuntu pair:
     scripts/20-kernel.sh   Release checks, kernel security updates, 7.0+ check
   windows-to-ubuntu/     Pair runbook (steps 1–4 + troubleshooting) and
@@ -49,9 +56,19 @@ from a live USB — the device page says so up front.
 
 ## The path
 
-1. Open your **device page** under [`devices/`](devices) — hardware facts,
+1. Run the **common install plan** — it decides the shared constraints once
+   (which OSes from the [catalog](common/config/os-catalog.env), clean
+   install vs upgrade per OS, boot-state backup, boot partition size), runs
+   the release checks, and writes a plan the device scripts honor
+   ([details](common/docs/install-plan.md)):
+
+   ```bash
+   ./common/scripts/00-install-plan.sh          # unattended: --os,--mode,--backup,...
+   ```
+
+2. Open your **device page** under [`devices/`](devices) — hardware facts,
    BIOS keys, quirks.
-2. Follow your **pair runbook** (prep → install → post-install, with
+3. Follow your **pair runbook** (prep → install → post-install, with
    troubleshooting and rollback alongside):
    [Windows → Ubuntu](common/windows-to-ubuntu/docs/01-windows-prep.md) ·
    [macOS → Ubuntu](common/macos-to-ubuntu/docs/01-macos-prep.md).
@@ -84,9 +101,12 @@ shell scripts, a PowerShell parse of the rollback script, and a fresh Ubuntu
 26.04 container run asserting both unattended modes of `20-kernel.sh`
 (release checks skipped without `--check-releases`; Ubuntu release check +
 kernel patching with it) and the graceful no-GPU failure of the device driver
-script, the Mac device scripts (wrong-hardware / wrong-OS refusal), and the
+script, the Mac device scripts (wrong-hardware / wrong-OS refusal), the
 Librem 14 dual-install script (wrong-hardware refusal before anything
-destructive, with `--destructive` unable to bypass that gate). A
+destructive, with `--destructive` unable to bypass that gate), and the
+common install-plan script (flags/defaults land in the plan, destructive is
+never an unattended default, unknown OSes rejected, Rocky/Windows release
+checks wired). A
 separate **GPU-path job** stubs `lspci` as the MSI Raider's RTX 5090 so the
 driver script's GPU-present path runs for real — actual driver package
 install plus all three driver-selection branches — validating selection and

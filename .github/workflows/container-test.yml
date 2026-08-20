@@ -18,7 +18,7 @@ jobs:
         # only a fallback (it has hung on runner mirror flakiness).
         run: command -v shellcheck || (sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck)
       - name: Lint shell scripts
-        run: shellcheck -x -S warning devices/*/scripts/*.sh common/*/scripts/*.sh common/lib/common.sh test/*.sh
+        run: shellcheck -x -S warning devices/*/scripts/*.sh common/scripts/*.sh common/*/scripts/*.sh common/lib/*.sh test/*.sh
       - name: Parse Windows rollback script
         run: |
           pwsh -NoProfile -Command '
@@ -42,7 +42,11 @@ jobs:
         # (5) the macOS-side OCLP script refuses to run on Linux;
         # (6) the Librem 14 dual-install script refuses on non-Purism
         # hardware before anything destructive; (7) --destructive does not
-        # bypass that gate, and --help documents both flags.
+        # bypass that gate, and --help documents both flags; (8) the common
+        # install-plan script honors defaults + flags in the written plan,
+        # never defaults to a destructive mode unattended, and documents
+        # the shared flag vocabulary; (9) it rejects OSes outside the
+        # catalog and its Rocky/Windows 11 release checks are wired.
         run: ./test/container-test.sh
 
   gpu-path:

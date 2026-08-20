@@ -161,3 +161,8 @@ installed_version() {
   local cmd="$1"; shift
   command_exists "$cmd" && "$cmd" "$@" 2>/dev/null | head -n1 || true
 }
+
+# The shared command-line contract (flag parsing, the check-releases rule,
+# the destructive gate) lives alongside and always loads with this file.
+# shellcheck source=args.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/args.sh"

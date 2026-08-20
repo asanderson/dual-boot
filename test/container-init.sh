@@ -101,4 +101,34 @@ grep -q -- "--destructive" <<<"$out" || fail "test 7: --help does not document -
 grep -q -- "--check-releases" <<<"$out" || fail "test 7: --help does not document --check-releases"
 echo "  PASS: hardware gate precedes --destructive; --help documents both flags"
 
+echo "### [test 8] 00-install-plan.sh unattended: defaults + flags land in the plan"
+out="$(as_dev ./common/scripts/00-install-plan.sh --os ubuntu,rocky --mode rocky=install --no-backup --boot-size 3 2>&1)" \
+  || { echo "$out" | tail -20; fail "test 8: plan script exited non-zero"; }
+grep -q "Release checks skipped" <<<"$out" || fail "test 8: unattended run without --check-releases must skip release checks"
+plan="$(cat /home/dev/.dual-boot-plan.env 2>/dev/null)" || fail "test 8: plan file not written"
+grep -q 'DUAL_BOOT_PLAN_OSES="ubuntu rocky"' <<<"$plan" || fail "test 8: planned OS list wrong"
+grep -q 'DUAL_BOOT_PLAN_MODE_ubuntu="upgrade"' <<<"$plan" || fail "test 8: ubuntu must default to 'upgrade' — destructive is never an unattended default"
+grep -q 'DUAL_BOOT_PLAN_MODE_rocky="install"' <<<"$plan" || fail "test 8: --mode rocky=install not honored"
+grep -q 'DUAL_BOOT_PLAN_BACKUP="0"' <<<"$plan" || fail "test 8: --no-backup not honored"
+grep -q 'DUAL_BOOT_PLAN_BOOT_GIB="3"' <<<"$plan" || fail "test 8: --boot-size not honored"
+out="$(as_dev ./common/scripts/00-install-plan.sh --help 2>&1)" || fail "test 8: --help exited non-zero"
+for flag in "--os LIST" "--mode OS=MODE" "--backup" "--boot-size GIB" "--plan-file FILE"; do
+  grep -q -- "$flag" <<<"$out" || fail "test 8: --help does not document ${flag}"
+done
+echo "  PASS: plan honors defaults + flags; unattended checks skipped; help documents the vocabulary"
+
+echo "### [test 9] 00-install-plan.sh: catalog validation + release-check wiring"
+set +e
+out="$(as_dev ./common/scripts/00-install-plan.sh --os bogus 2>&1)"; rc=$?
+set -e
+[[ $rc -ne 0 ]] || fail "test 9: unknown OS must be rejected"
+grep -q "unknown OS 'bogus'" <<<"$out" || fail "test 9: missing catalog rejection message"
+out="$(as_dev ./common/scripts/00-install-plan.sh --check-releases --os rocky,windows-11-pro --no-backup 2>&1)" \
+  || { echo "$out" | tail -20; fail "test 9: release-check run exited non-zero"; }
+grep -qE "Latest Rocky Linux release|Could not determine the latest Rocky" <<<"$out" \
+  || fail "test 9: Rocky release check did not run"
+grep -qE "Newest Windows 11 version|Could not determine the latest Windows 11" <<<"$out" \
+  || fail "test 9: Windows 11 release check did not run"
+echo "  PASS: unknown OS rejected; Rocky + Windows 11 release checks wired"
+
 echo "### [done] all assertions passed"

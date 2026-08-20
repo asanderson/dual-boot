@@ -15,22 +15,12 @@ source "${REPO_ROOT}/common/lib/common.sh"
 
 usage() {
   echo "Usage: $0 [--check-releases]"
-  echo "  --check-releases   in non-interactive mode (DEV_SETUP_ASSUME_YES=1),"
-  echo "                     also run the firmware/driver update prechecks and"
-  echo "                     the shared Ubuntu/kernel release check"
-  echo "                     (interactive mode always runs/offers them)"
+  usage_common_flags
 }
 
-CHECK_RELEASES=""
-for arg in "$@"; do
-  case "$arg" in
-    --check-releases) CHECK_RELEASES=1 ;;
-    -h|--help) usage; exit 0 ;;
-    *) err "Unknown argument: $arg"; usage; exit 2 ;;
-  esac
-done
-[[ "${DEV_SETUP_ASSUME_YES:-0}" != "1" ]] && CHECK_RELEASES=1
-CHECK_RELEASES="${CHECK_RELEASES:-0}"
+# shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
+COMMON_ARGS_ACCEPT="check-releases"
+parse_common_args "$@"
 
 main() {
   require_not_root
