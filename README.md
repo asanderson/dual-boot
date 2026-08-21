@@ -94,6 +94,34 @@ Elastic, Ollama, …) is intentionally out of scope here — it lives in a
 separate dev-environment repository and layers on top of a machine this repo
 has finished with.
 
+## Documentation map
+
+**Plan first** — the decisions every device flow shares:
+
+| Doc | What's inside |
+|---|---|
+| [The install plan](common/docs/install-plan.md) | The shared constraint layer: the OS catalog with its per-OS media/verification table, install-vs-upgrade semantics, the boot-state backup, the Secure Boot + disk-encryption decisions (with the per-device honoring table), Wi-Fi settings, boot-size guidance, and the flag vocabulary every script accepts |
+
+**Pair runbooks** — the common path from factory OS to dual boot. Read the
+steps in order; troubleshooting and rollback sit alongside:
+
+| Step | Windows → Ubuntu | macOS (Intel) → Ubuntu |
+|---|---|---|
+| 1. Prepare the factory OS | [01-windows-prep](common/windows-to-ubuntu/docs/01-windows-prep.md) | [01-macos-prep](common/macos-to-ubuntu/docs/01-macos-prep.md) |
+| 2. Install Ubuntu | [02-ubuntu-install](common/windows-to-ubuntu/docs/02-ubuntu-install.md) | [02-ubuntu-install](common/macos-to-ubuntu/docs/02-ubuntu-install.md) |
+| 3. Post-install | [03-post-install](common/windows-to-ubuntu/docs/03-post-install.md) | [03-post-install](common/macos-to-ubuntu/docs/03-post-install.md) |
+| 4. Rollback (undo everything) | [04-rollback](common/windows-to-ubuntu/docs/04-rollback.md) | [04-rollback](common/macos-to-ubuntu/docs/04-rollback.md) |
+| Troubleshooting | [troubleshooting](common/windows-to-ubuntu/docs/troubleshooting.md) | [troubleshooting](common/macos-to-ubuntu/docs/troubleshooting.md) |
+
+**Device pages and deep dives** — hardware facts, boot keys, quirks, then
+the guides specific to that machine:
+
+| Device | Start here | Deep dives |
+|---|---|---|
+| MSI Raider 18 HX AI | [device page](devices/msi-raider-18-hx-ai/README.md) | [NVIDIA driver (Blackwell, MOK/Secure Boot)](devices/msi-raider-18-hx-ai/docs/nvidia-driver.md) · [research notes](devices/msi-raider-18-hx-ai/docs/research-notes.md) |
+| MacBook Pro 15" 2017 (14,3) | [device page](devices/macbook-pro-14-3/README.md) | [macOS Sequoia via OpenCore Legacy Patcher](devices/macbook-pro-14-3/docs/macos-sequoia-oclp.md) |
+| Purism Librem 14 v1 | [device page](devices/librem-14-v1/README.md) | [Qubes OS + PureOS clean dual install](devices/librem-14-v1/docs/qubes-pureos-dual-install.md) |
+
 ## Testing
 
 Every PR runs `.github/workflows/container-test.yml`: shellcheck across the
