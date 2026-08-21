@@ -11,12 +11,15 @@ device-specific overlay** per machine:
 common/
   lib/                   Shared bash: helpers (common.sh), the flag/prompt
                            contract (args.sh), OS catalog behavior (oses.sh),
-                           and the constraint planner (plan.sh)
+                           and the constraint planner (plan.sh — incl. the
+                           security-plan verifier and the Wi-Fi applier)
   config/os-catalog.env  The OS catalog + latest-release pins (Ubuntu, Qubes,
                            PureOS, Rocky, RHEL, Windows 11 Pro/Home)
   scripts/00-install-plan.sh  Common entry point: decide which OSes,
-                           install-vs-upgrade, backups, boot size — once
-  docs/install-plan.md   The plan layer + per-OS media/verification table
+                           install-vs-upgrade, backups, Secure Boot, disk
+                           encryption, Wi-Fi, boot size — once
+  docs/install-plan.md   The plan layer: per-OS media/verification table,
+                           the Secure Boot/encryption honoring table, Wi-Fi
   ubuntu/                Target-OS commons shared by every Ubuntu pair:
     scripts/20-kernel.sh   Release checks, kernel security updates, 7.0+ check
   windows-to-ubuntu/     Pair runbook (steps 1–4 + troubleshooting) and
@@ -26,6 +29,7 @@ common/
 devices/
   <device>/              Device page: hardware table, boot keys, quirks,
     docs/ scripts/ config/  device guides (drivers, OS upgrades), pins
+sbom.cdx.json            CycloneDX SBOM of everything the runbooks install
 test/  .github/          Container test harness + CI
 ```
 
