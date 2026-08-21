@@ -101,6 +101,7 @@ has finished with.
 | Doc | What's inside |
 |---|---|
 | [The install plan](common/docs/install-plan.md) | The shared constraint layer: the OS catalog with its per-OS media/verification table, install-vs-upgrade semantics, the boot-state backup, the Secure Boot + disk-encryption decisions (with the per-device honoring table), Wi-Fi settings, boot-size guidance, and the flag vocabulary every script accepts |
+| [Software bill of materials](sbom.cdx.json) | CycloneDX 1.6 SBOM of everything the runbooks put on target machines — the operating systems, firmware (PureBoot/EC), drivers, and packages — with suppliers, versions from the pins, and verification notes (maintained alongside `os-catalog.env` and the device `versions.env` files) |
 
 **Pair runbooks** — the common path from factory OS to dual boot. Read the
 steps in order; troubleshooting and rollback sit alongside:

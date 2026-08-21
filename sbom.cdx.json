@@ -1,0 +1,502 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:eab46871-7579-408a-b39d-530d73b53b0c",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-08-21T10:46:11Z",
+    "authors": [
+      {
+        "name": "asanderson/dual-boot"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "dual-boot",
+      "description": "Dual-boot runbooks and scripts for adding Linux to machines shipping another OS",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/asanderson/dual-boot"
+        }
+      ]
+    },
+    "properties": [
+      {
+        "name": "scope",
+        "value": "Every third-party operating system, firmware, driver, and package the runbooks and scripts install, fetch, or offer on target machines. CI-only tooling is excluded. Transitive package dependencies are resolved by apt at install time and are not enumerated. OS/firmware version pins live in common/config/os-catalog.env and devices/*/config/versions.env; this file is maintained alongside them."
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "operating-system",
+      "name": "Ubuntu",
+      "version": "26.04 LTS",
+      "supplier": {
+        "name": "Canonical"
+      },
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://releases.ubuntu.com/26.04/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "note",
+          "value": "kernel line 7.0; upstream stable 7.2 reported by the release checks"
+        }
+      ]
+    },
+    {
+      "type": "operating-system",
+      "name": "Qubes OS",
+      "version": "4.3.1",
+      "supplier": {
+        "name": "Qubes OS Project"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-2.0-or-later"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://mirrors.edge.kernel.org/qubes/iso"
+        }
+      ],
+      "properties": [
+        {
+          "name": "note",
+          "value": "ISO verified via detached PGP signature chained to the pinned Qubes Master Signing Key"
+        }
+      ]
+    },
+    {
+      "type": "operating-system",
+      "name": "PureOS",
+      "version": "11 \"crimson\"",
+      "supplier": {
+        "name": "Purism"
+      },
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://storage.puri.sm/pureos/images/crimson"
+        }
+      ],
+      "properties": [
+        {
+          "name": "note",
+          "value": "image pureos-11-gnome-live-20260515; pinned SHA256 (Purism ships no GPG signatures)"
+        }
+      ]
+    },
+    {
+      "type": "operating-system",
+      "name": "Rocky Linux",
+      "version": "10.2",
+      "supplier": {
+        "name": "Rocky Enterprise Software Foundation"
+      },
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://download.rockylinux.org/pub/rocky"
+        }
+      ],
+      "properties": [
+        {
+          "name": "note",
+          "value": "ISO verified via the GPG-signed CHECKSUM file against the pinned Rocky key"
+        }
+      ]
+    },
+    {
+      "type": "operating-system",
+      "name": "Red Hat Enterprise Linux",
+      "version": "10.2",
+      "supplier": {
+        "name": "Red Hat"
+      },
+      "licenses": [
+        {
+          "license": {
+            "name": "Red Hat subscription terms"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "note",
+          "value": "media requires a Red Hat login; no unauthenticated official channel"
+        }
+      ]
+    },
+    {
+      "type": "operating-system",
+      "name": "Windows 11 Pro / Home",
+      "version": "25H2",
+      "supplier": {
+        "name": "Microsoft"
+      },
+      "licenses": [
+        {
+          "license": {
+            "name": "Microsoft Software License"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "note",
+          "value": "multi-edition ISO, manual download with 24h links; SHA256 published on the download page"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "name": "NVIDIA Linux driver (open kernel modules)",
+      "version": "R595 branch",
+      "supplier": {
+        "name": "NVIDIA"
+      },
+      "licenses": [
+        {
+          "license": {
+            "name": "MIT/GPL-2.0 kernel modules + proprietary userspace"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "note",
+          "value": "NVIDIA_DRIVER_BRANCH pin; ubuntu-drivers recommendation upgraded to the -open variant"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "name": "OpenCore Legacy Patcher",
+      "version": "2.4.1",
+      "supplier": {
+        "name": "Dortania"
+      },
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD-3-Clause (see repo)"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/dortania/OpenCore-Legacy-Patcher"
+        }
+      ]
+    },
+    {
+      "type": "firmware",
+      "name": "PureBoot (coreboot + Heads)",
+      "version": "Release-30.1",
+      "supplier": {
+        "name": "Purism"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-2.0-or-later"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "note",
+          "value": "never flashed by scripts; updated via Purism's coreboot_util.sh"
+        }
+      ]
+    },
+    {
+      "type": "firmware",
+      "name": "Librem EC firmware",
+      "version": "1.14",
+      "supplier": {
+        "name": "Purism"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-2.0-or-later"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "curl",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/curl",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "gnupg",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/gnupg",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "gdisk",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/gdisk",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "fwupd",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/fwupd",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "mokutil",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/mokutil",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "software-properties-common",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/software-properties-common",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "ubuntu-drivers-common",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/ubuntu-drivers-common",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "linux-generic",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/linux-generic",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "linux-firmware",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/linux-firmware",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "intel-microcode",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/intel-microcode",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "libgl1-mesa-dri",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/libgl1-mesa-dri",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "mbpfan",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/mbpfan",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "ubuntu-release-upgrader-core",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/ubuntu-release-upgrader-core",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "unattended-upgrades",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/unattended-upgrades",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "nvidia-cuda-toolkit",
+      "supplier": {
+        "name": "Ubuntu archive"
+      },
+      "purl": "pkg:deb/ubuntu/nvidia-cuda-toolkit",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "name": "mainline (kernel installer)",
+      "supplier": {
+        "name": "cappelikan PPA"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-3.0-or-later"
+          }
+        }
+      ],
+      "purl": "pkg:deb/cappelikan/mainline",
+      "properties": [
+        {
+          "name": "resolution",
+          "value": "latest, resolved at install time"
+        },
+        {
+          "name": "note",
+          "value": "optional upstream-kernel path in 20-kernel.sh"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "librem-ec-acpi (DKMS driver)",
+      "supplier": {
+        "name": "Purism"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-2.0-only"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "note",
+          "value": "documented for the installed OSes on the Librem 14; not installed by these scripts"
+        }
+      ]
+    }
+  ]
+}
