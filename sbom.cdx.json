@@ -2,7 +2,7 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
   "serialNumber": "urn:uuid:eab46871-7579-408a-b39d-530d73b53b0c",
-  "version": 1,
+  "version": 2,
   "metadata": {
     "timestamp": "2026-08-21T10:46:11Z",
     "authors": [
@@ -26,7 +26,8 @@
           "type": "vcs",
           "url": "https://github.com/asanderson/dual-boot"
         }
-      ]
+      ],
+      "bom-ref": "dual-boot"
     },
     "properties": [
       {
@@ -54,7 +55,8 @@
           "name": "note",
           "value": "kernel line 7.0; upstream stable 7.2 reported by the release checks"
         }
-      ]
+      ],
+      "bom-ref": "Ubuntu"
     },
     {
       "type": "operating-system",
@@ -81,7 +83,8 @@
           "name": "note",
           "value": "ISO verified via detached PGP signature chained to the pinned Qubes Master Signing Key"
         }
-      ]
+      ],
+      "bom-ref": "Qubes OS"
     },
     {
       "type": "operating-system",
@@ -101,7 +104,8 @@
           "name": "note",
           "value": "image pureos-11-gnome-live-20260515; pinned SHA256 (Purism ships no GPG signatures)"
         }
-      ]
+      ],
+      "bom-ref": "PureOS"
     },
     {
       "type": "operating-system",
@@ -121,7 +125,8 @@
           "name": "note",
           "value": "ISO verified via the GPG-signed CHECKSUM file against the pinned Rocky key"
         }
-      ]
+      ],
+      "bom-ref": "Rocky Linux"
     },
     {
       "type": "operating-system",
@@ -142,7 +147,8 @@
           "name": "note",
           "value": "media requires a Red Hat login; no unauthenticated official channel"
         }
-      ]
+      ],
+      "bom-ref": "Red Hat Enterprise Linux"
     },
     {
       "type": "operating-system",
@@ -163,7 +169,8 @@
           "name": "note",
           "value": "multi-edition ISO, manual download with 24h links; SHA256 published on the download page"
         }
-      ]
+      ],
+      "bom-ref": "Windows 11 Pro / Home"
     },
     {
       "type": "application",
@@ -184,7 +191,8 @@
           "name": "note",
           "value": "NVIDIA_DRIVER_BRANCH pin; ubuntu-drivers recommendation upgraded to the -open variant"
         }
-      ]
+      ],
+      "bom-ref": "NVIDIA Linux driver (open kernel modules)"
     },
     {
       "type": "application",
@@ -205,7 +213,8 @@
           "type": "website",
           "url": "https://github.com/dortania/OpenCore-Legacy-Patcher"
         }
-      ]
+      ],
+      "bom-ref": "OpenCore Legacy Patcher"
     },
     {
       "type": "firmware",
@@ -226,7 +235,8 @@
           "name": "note",
           "value": "never flashed by scripts; updated via Purism's coreboot_util.sh"
         }
-      ]
+      ],
+      "bom-ref": "PureBoot (coreboot + Heads)"
     },
     {
       "type": "firmware",
@@ -241,7 +251,8 @@
             "id": "GPL-2.0-or-later"
           }
         }
-      ]
+      ],
+      "bom-ref": "Librem EC firmware"
     },
     {
       "type": "library",
@@ -255,7 +266,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "curl"
     },
     {
       "type": "library",
@@ -269,7 +281,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "gnupg"
     },
     {
       "type": "library",
@@ -283,7 +296,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "gdisk"
     },
     {
       "type": "library",
@@ -297,7 +311,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "fwupd"
     },
     {
       "type": "library",
@@ -311,7 +326,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "mokutil"
     },
     {
       "type": "library",
@@ -325,7 +341,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "software-properties-common"
     },
     {
       "type": "library",
@@ -339,7 +356,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "ubuntu-drivers-common"
     },
     {
       "type": "library",
@@ -353,7 +371,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "linux-generic"
     },
     {
       "type": "library",
@@ -367,7 +386,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "linux-firmware"
     },
     {
       "type": "library",
@@ -381,7 +401,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "intel-microcode"
     },
     {
       "type": "library",
@@ -395,7 +416,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "libgl1-mesa-dri"
     },
     {
       "type": "library",
@@ -409,7 +431,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "mbpfan"
     },
     {
       "type": "library",
@@ -423,7 +446,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "ubuntu-release-upgrader-core"
     },
     {
       "type": "library",
@@ -437,7 +461,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "unattended-upgrades"
     },
     {
       "type": "library",
@@ -451,7 +476,8 @@
           "name": "resolution",
           "value": "latest, resolved at install time"
         }
-      ]
+      ],
+      "bom-ref": "nvidia-cuda-toolkit"
     },
     {
       "type": "application",
@@ -476,7 +502,8 @@
           "name": "note",
           "value": "optional upstream-kernel path in 20-kernel.sh"
         }
-      ]
+      ],
+      "bom-ref": "mainline (kernel installer)"
     },
     {
       "type": "library",
@@ -496,6 +523,67 @@
           "name": "note",
           "value": "documented for the installed OSes on the Librem 14; not installed by these scripts"
         }
+      ],
+      "bom-ref": "librem-ec-acpi (DKMS driver)"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "dual-boot",
+      "dependsOn": [
+        "curl",
+        "fwupd",
+        "gdisk",
+        "gnupg",
+        "libgl1-mesa-dri",
+        "librem-ec-acpi (DKMS driver)",
+        "linux-generic",
+        "mainline (kernel installer)",
+        "mbpfan",
+        "nvidia-cuda-toolkit",
+        "OpenCore Legacy Patcher",
+        "PureBoot (coreboot + Heads)",
+        "PureOS",
+        "Qubes OS",
+        "Red Hat Enterprise Linux",
+        "Rocky Linux",
+        "software-properties-common",
+        "Ubuntu",
+        "ubuntu-release-upgrader-core",
+        "unattended-upgrades",
+        "Windows 11 Pro / Home"
+      ]
+    },
+    {
+      "ref": "librem-ec-acpi (DKMS driver)",
+      "dependsOn": [
+        "Librem EC firmware"
+      ]
+    },
+    {
+      "ref": "linux-generic",
+      "dependsOn": [
+        "intel-microcode",
+        "linux-firmware"
+      ]
+    },
+    {
+      "ref": "NVIDIA Linux driver (open kernel modules)",
+      "dependsOn": [
+        "mokutil",
+        "ubuntu-drivers-common"
+      ]
+    },
+    {
+      "ref": "nvidia-cuda-toolkit",
+      "dependsOn": [
+        "NVIDIA Linux driver (open kernel modules)"
+      ]
+    },
+    {
+      "ref": "PureBoot (coreboot + Heads)",
+      "dependsOn": [
+        "Librem EC firmware"
       ]
     }
   ]
