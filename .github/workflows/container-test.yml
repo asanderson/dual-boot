@@ -19,6 +19,8 @@ jobs:
         run: command -v shellcheck || (sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck)
       - name: Lint shell scripts
         run: shellcheck -x -S warning devices/*/scripts/*.sh common/scripts/*.sh common/*/scripts/*.sh common/lib/*.sh test/*.sh
+      - name: SBOM.md is in sync with sbom.cdx.json
+        run: python3 test/sbom-md.py --check
       - name: Parse Windows rollback script
         run: |
           pwsh -NoProfile -Command '
