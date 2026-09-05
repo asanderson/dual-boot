@@ -101,7 +101,8 @@ grep -q "This script targets the Librem 14" <<<"$out" || fail "test 7: missing w
 out="$(as_dev ./devices/librem-14-v1/scripts/10-dual-install-prep.sh --help 2>&1)" || fail "test 7: --help exited non-zero"
 grep -q -- "--destructive" <<<"$out" || fail "test 7: --help does not document --destructive"
 grep -q -- "--check-releases" <<<"$out" || fail "test 7: --help does not document --check-releases"
-echo "  PASS: hardware gate precedes --destructive; --help documents both flags"
+grep -q -- "--full-backup DIR" <<<"$out" || fail "test 7: --help does not document --full-backup"
+echo "  PASS: hardware gate precedes --destructive; --help documents the flags"
 
 echo "### [test 8] 00-install-plan.sh unattended: defaults + flags land in the plan"
 out="$(as_dev ./common/scripts/00-install-plan.sh --os ubuntu,rocky --mode rocky=install --no-backup --boot-size 3 2>&1)" \
@@ -112,6 +113,8 @@ grep -q 'DUAL_BOOT_PLAN_OSES="ubuntu rocky"' <<<"$plan" || fail "test 8: planned
 grep -q 'DUAL_BOOT_PLAN_MODE_ubuntu="upgrade"' <<<"$plan" || fail "test 8: ubuntu must default to 'upgrade' — destructive is never an unattended default"
 grep -q 'DUAL_BOOT_PLAN_MODE_rocky="install"' <<<"$plan" || fail "test 8: --mode rocky=install not honored"
 grep -q 'DUAL_BOOT_PLAN_BACKUP="0"' <<<"$plan" || fail "test 8: --no-backup not honored"
+grep -q 'DUAL_BOOT_PLAN_FULL_BACKUP="0"' <<<"$plan" \
+  || fail "test 8: a full image backup must not be planned unattended without --full-backup DIR"
 grep -q 'DUAL_BOOT_PLAN_BOOT_GIB="3"' <<<"$plan" || fail "test 8: --boot-size not honored"
 grep -q 'DUAL_BOOT_PLAN_SECURE_BOOT="1"' <<<"$plan" \
   || fail "test 8: Secure Boot must default to enforced (1) in an unattended plan"
@@ -123,6 +126,17 @@ out="$(as_dev ./common/scripts/00-install-plan.sh --os ubuntu --no-backup --no-s
 plan="$(cat /home/dev/.dual-boot-plan.env 2>/dev/null)" || fail "test 8: plan file not rewritten"
 grep -q 'DUAL_BOOT_PLAN_SECURE_BOOT="0"' <<<"$plan" || fail "test 8: --no-secure-boot not honored"
 grep -q 'DUAL_BOOT_PLAN_ENCRYPT="0"' <<<"$plan" || fail "test 8: --no-encrypt not honored"
+out="$(as_dev ./common/scripts/00-install-plan.sh --os ubuntu --no-backup --full-backup /home/dev/ext-drive --disk /dev/null 2>&1)" \
+  || { echo "$out" | tail -20; fail "test 8: --full-backup run exited non-zero"; }
+grep -q "does not exist yet" <<<"$out" || fail "test 8: an absent --full-backup destination must be warned about"
+grep -q "is not a block device" <<<"$out" || fail "test 8: --full-backup with a non-disk --disk must warn, not image"
+grep -q "Full image backup not taken" <<<"$out" || fail "test 8: a failed full image must be reported without aborting the plan"
+plan="$(cat /home/dev/.dual-boot-plan.env 2>/dev/null)" || fail "test 8: plan file not rewritten"
+grep -q 'DUAL_BOOT_PLAN_FULL_BACKUP="1"' <<<"$plan" || fail "test 8: --full-backup not honored"
+grep -q 'DUAL_BOOT_PLAN_FULL_BACKUP_DEST=/home/dev/ext-drive' <<<"$plan" || fail "test 8: --full-backup destination missing from the plan"
+out="$(as_dev ./common/scripts/00-install-plan.sh --os ubuntu --no-backup --no-full-backup 2>&1)" \
+  || { echo "$out" | tail -20; fail "test 8: --no-full-backup run exited non-zero"; }
+grep -q 'DUAL_BOOT_PLAN_FULL_BACKUP="0"' /home/dev/.dual-boot-plan.env || fail "test 8: --no-full-backup not honored"
 # One quoted string: as_dev flattens its args into a bash -c line, so the
 # space-in-password case needs its quoting embedded, not re-split.
 out="$(as_dev "./common/scripts/00-install-plan.sh --os ubuntu --no-backup \
@@ -141,10 +155,10 @@ out="$(as_dev ./common/scripts/00-install-plan.sh --os ubuntu --no-backup --wifi
 grep -q "skipping Wi-Fi configuration" <<<"$out" \
   || fail "test 8: unattended --wifi-ssid without a password must warn and skip"
 out="$(as_dev ./common/scripts/00-install-plan.sh --help 2>&1)" || fail "test 8: --help exited non-zero"
-for flag in "--os LIST" "--mode OS=MODE" "--backup" "--secure-boot" "--encrypt" "--wifi-ssid" "--boot-size GIB" "--plan-file FILE"; do
+for flag in "--os LIST" "--mode OS=MODE" "--backup" "--full-backup DIR" "--secure-boot" "--encrypt" "--wifi-ssid" "--boot-size GIB" "--plan-file FILE"; do
   grep -q -- "$flag" <<<"$out" || fail "test 8: --help does not document ${flag}"
 done
-echo "  PASS: plan honors defaults + flags (incl. secure-boot/encrypt/wifi, mode-600 plan, no password leak); help documents the vocabulary"
+echo "  PASS: plan honors defaults + flags (incl. secure-boot/encrypt/wifi/full-backup, mode-600 plan, no password leak); help documents the vocabulary"
 
 echo "### [test 9] 00-install-plan.sh: catalog validation + release-check wiring"
 set +e

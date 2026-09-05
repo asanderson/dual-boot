@@ -61,6 +61,9 @@ require_not_root() {
 }
 
 require_sudo() {
+  # Idempotent: a second call (e.g. two backup steps in one run) must not
+  # start a second keepalive loop and orphan the first one's trap.
+  [[ -n "${SUDO_KEEPALIVE_PID:-}" ]] && return 0
   if ! sudo -v; then
     die "sudo privileges are required."
   fi

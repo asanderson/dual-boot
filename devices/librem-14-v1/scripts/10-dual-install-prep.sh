@@ -10,6 +10,7 @@
 #
 # Usage: 10-dual-install-prep.sh [--check-releases] [--destructive]
 #                                [--backup|--no-backup]
+#                                [--full-backup DIR|--no-full-backup]
 #                                [--secure-boot|--no-secure-boot]
 #                                [--encrypt|--no-encrypt] [--wifi-ssid NAME]
 #                                [--wifi-password PW] [--wifi-security T]
@@ -19,7 +20,7 @@
 #                                [--plan-file FILE]
 #
 # Honors a plan written by common/scripts/00-install-plan.sh (boot size,
-# backup decision, Secure Boot, disk encryption, Wi-Fi, target disk);
+# backup decisions, Secure Boot, disk encryption, Wi-Fi, target disk);
 # explicit flags override the plan. The
 # shared contract applies: interactive runs check releases first and confirm
 # the wipe (default YES — this device's documented default); unattended runs
@@ -46,6 +47,7 @@ source "${DEVICE_DIR}/config/versions.env"
 
 usage() {
   echo "Usage: $0 [--check-releases] [--destructive] [--backup|--no-backup]"
+  echo "          [--full-backup DIR|--no-full-backup]"
   echo "          [--secure-boot|--no-secure-boot] [--encrypt|--no-encrypt]"
   echo "          [--wifi-ssid NAME] [--wifi-password PW] [--wifi-security T]"
   echo "          [--wifi-hidden] [--disk DEV] [--boot-size GIB]"
@@ -55,7 +57,7 @@ usage() {
 }
 
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
-COMMON_ARGS_ACCEPT="check-releases destructive backup secure-boot encrypt wifi disk boot-size download-dir usb plan-file"
+COMMON_ARGS_ACCEPT="check-releases destructive backup full-backup secure-boot encrypt wifi disk boot-size download-dir usb plan-file"
 parse_common_args "$@"
 
 # Honor a plan from 00-install-plan.sh: plan values become the defaults for
@@ -66,6 +68,10 @@ apply_plan() {
   source "$PLAN_FILE"
   log "Honoring plan ${PLAN_FILE} (flags on this invocation override it)."
   [[ -z "${BACKUP}" && -n "${DUAL_BOOT_PLAN_BACKUP:-}" ]] && BACKUP="${DUAL_BOOT_PLAN_BACKUP}"
+  if [[ -z "${FULL_BACKUP}" && -n "${DUAL_BOOT_PLAN_FULL_BACKUP:-}" ]]; then
+    FULL_BACKUP="${DUAL_BOOT_PLAN_FULL_BACKUP}"
+    FULL_BACKUP_DEST="${DUAL_BOOT_PLAN_FULL_BACKUP_DEST:-}"
+  fi
   [[ -z "${SECURE_BOOT}" && -n "${DUAL_BOOT_PLAN_SECURE_BOOT:-}" ]] && SECURE_BOOT="${DUAL_BOOT_PLAN_SECURE_BOOT}"
   [[ -z "${ENCRYPT_DISKS}" && -n "${DUAL_BOOT_PLAN_ENCRYPT:-}" ]] && ENCRYPT_DISKS="${DUAL_BOOT_PLAN_ENCRYPT}"
   [[ -z "${BOOT_GIB_SET}" && -n "${DUAL_BOOT_PLAN_BOOT_GIB:-}" ]] && BOOT_GIB="${DUAL_BOOT_PLAN_BOOT_GIB}"
@@ -101,6 +107,8 @@ main() {
   warn "THIS FLOW IS DESTRUCTIVE BY DESIGN: the internal SSD (${TARGET_DISK}) will be"
   warn "wiped and both Qubes OS and PureOS installed fresh. The factory PureOS"
   warn "install is NOT preserved. Copy anything you need off this machine first."
+  warn "(--full-backup DIR, or the prompt right before the wipe, images the whole"
+  warn "SSD to an external drive first so the factory state stays restorable.)"
 
   require_sudo
 
@@ -228,6 +236,17 @@ main() {
       BACKUP="$PLAN_BACKUP"
     fi
     [[ "$BACKUP" == "1" ]] && backup_boot_state "$TARGET_DISK" "${HOME}/dual-boot-backups"
+    # Full image of the SSD (plan / --full-backup DIR / prompt): the only way
+    # the factory PureOS stays restorable, so a failed image aborts the wipe.
+    if [[ -z "${FULL_BACKUP}" ]]; then
+      plan_full_backup_decide
+      FULL_BACKUP="$PLAN_FULL_BACKUP"
+      FULL_BACKUP_DEST="$PLAN_FULL_BACKUP_DEST"
+    fi
+    if [[ "$FULL_BACKUP" == "1" ]]; then
+      backup_full_image "$TARGET_DISK" "$FULL_BACKUP_DEST" \
+        || die "Full image backup failed — ${TARGET_DISK} left untouched. Fix the destination and re-run."
+    fi
     log "Creating the dual-OS GPT layout on ${TARGET_DISK}:"
     log "  1  ${BOOT_GIB}GiB   shared /boot (ext4, unencrypted — PureBoot/Heads tracks ONE"
     log "            /boot device, signs its contents, and lists both OSes' entries)"

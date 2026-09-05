@@ -8,7 +8,9 @@ fresh under PureBoot. Follow it top to bottom; the device
 
 - **Everything on the internal SSD is destroyed**, including the factory
   PureOS. "Rollback" afterwards means reinstalling PureOS from a live USB
-  (step 8) — there is no preserved factory state.
+  (step 8) — there is no preserved factory state, unless you image the SSD
+  first: `--full-backup DIR` (or the prompt right before the wipe) writes a
+  restorable image of the whole disk to an external drive.
 - **Qubes OS officially discourages multibooting**: the FAQ answers the
   dual-boot question with "You shouldn't do that, because it poses a
   security risk", and its multiboot guide names the risks — the unencrypted
@@ -74,7 +76,9 @@ The script, in order (interactive runs always; unattended only with
    publishes no GPG signatures for these images).
 4. **Write the two installer USBs** (each write confirmed).
 5. **The destructive step** — refused while the target disk hosts the
-   running system, so it actually executes in step 3 below.
+   running system, so it actually executes in step 3 below. Right before
+   the wipe come the backups: the boot-state one, and — when planned — the
+   full SSD image (a failed image aborts the wipe).
 
 ## 3. Wipe + partition from the PureOS live USB
 
@@ -84,7 +88,7 @@ script once more — this time the wipe prompt is reachable:
 
 ```bash
 ./devices/librem-14-v1/scripts/10-dual-install-prep.sh          # confirm wipe (default yes)
-# or unattended:
+# or unattended (add --full-backup /media/<you>/backup to image the SSD first):
 DEV_SETUP_ASSUME_YES=1 ./devices/librem-14-v1/scripts/10-dual-install-prep.sh --destructive
 ```
 
@@ -161,7 +165,9 @@ layouts.
 Boot the PureOS live USB → installer → erase disk → single PureOS install,
 then PureBoot **OEM Factory Reset / Re-Ownership** and a final `/boot`
 re-sign. That reproduces the factory software state (your keys instead of
-factory-paired ones).
+factory-paired ones). If you imaged the SSD before the wipe, restore that
+image from the live USB instead (the exact command is in its
+`RESTORE.txt`) — it brings back the factory PureOS exactly as it was.
 
 ## Troubleshooting / quirks (community-reported)
 

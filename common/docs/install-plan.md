@@ -9,6 +9,7 @@ plan script asks (or takes flags for) exactly those decisions:
 | Which operating systems | one prompt per catalog OS | `--os LIST` (else the default set) |
 | Clean install vs upgrade, per OS | prompt, **defaults to upgrade** | `--mode OS=install\|upgrade` (else upgrade — a destructive mode is never an unattended default) |
 | Back up existing boot devices/partitions first | prompt, defaults to **yes** | `--backup` / `--no-backup` (else yes — the backup only writes new files) |
+| Image the whole target disk (existing OS + every partition) first | prompt, defaults to **yes**, then asks for the external-drive directory | `--full-backup DIR` / `--no-full-backup` (else not planned — an image needs somewhere to go) |
 | Keep Secure Boot enforced | prompt, defaults to **yes** | `--secure-boot` / `--no-secure-boot` (else yes — a plan decision only, nothing is flashed) |
 | Encrypt OS disks at install time | prompt, defaults to **yes** | `--encrypt` / `--no-encrypt` (else yes — enacted by the OS installers) |
 | Wi-Fi for the installed systems | prompt (default: none); SSID, password (hidden input), security type, hidden-network | `--wifi-ssid` / `--wifi-password` (or `DUAL_BOOT_WIFI_PASSWORD`) / `--wifi-security wpa-psk\|sae\|open` / `--wifi-hidden` (planned only when an SSID is given) |
@@ -69,9 +70,34 @@ When selected, the plan backs up — non-destructively, into
 `~/dual-boot-backups/boot-backup-<stamp>/` — the GPT partition table of the
 target disk (`sgdisk --backup`), a full block-device inventory (`lsblk`),
 and tarballs of the mounted `/boot` and `/boot/efi`. Copy that directory
-**off the machine** before any destructive step. Full-disk image backups
-(Windows system image, Time Machine) remain Step 1.0 of the pair runbooks —
-this is the boot-specific safety net, not a replacement.
+**off the machine** before any destructive step. This is the cheap,
+always-on boot-specific safety net; the full image backup below is the
+disk-wide one.
+
+## The full image backup
+
+The runbooks' Step 1.0 full backup, as a plan decision. When selected
+(`--full-backup DIR`, or the prompt), the Linux side images the **whole
+target disk** — partition table, every partition, the existing OS — into
+`DIR/full-backup-<stamp>/` (`backup_full_image` in `common/lib/plan.sh`):
+`dd` piped through `zstd` (`gzip` when zstd is absent), a `SHA256SUMS`, the
+GPT table on its own, and a `RESTORE.txt` with the exact restore command.
+It refuses a destination that lives on the disk being imaged (at any
+layering depth), warns when the disk has mounted filesystems (image from a
+live USB for a clean one) or the destination looks too small (compression
+rescues a mostly-empty disk; an encrypted one will not compress), and
+reports failure honestly instead of leaving a half-image that looks whole.
+
+Where it runs: the plan script images right away when it knows the target
+disk (`--disk DEV`); otherwise it defers to the device prep script — on the
+Librem 14 the image is taken right before the wipe, and a failed image
+**aborts the wipe**. The Windows and macOS preps happen inside the factory
+OS, so each pair runbook's Step 1.0 has a native script for the same job:
+[`backup-windows.ps1`](../windows-to-ubuntu/windows/backup-windows.ps1)
+(a `wbadmin` system image — what System Image Recovery restores) and
+[`backup-macos.sh`](../macos-to-ubuntu/macos/backup-macos.sh) (a Time
+Machine backup — what macOS Recovery restores). The plan records the
+intent; the script on each side carries it out.
 
 ## The OS catalog
 

@@ -16,6 +16,8 @@
 #   DESTRUCTIVE      1 only when --destructive was passed (see
 #                    destructive_gate below).
 #   BACKUP           "" (prompt later), 1 (--backup) or 0 (--no-backup).
+#   FULL_BACKUP      "" (prompt later), 1 (--full-backup DIR) or 0 (--no-full-backup).
+#   FULL_BACKUP_DEST the external-drive directory from --full-backup, or "".
 #   SECURE_BOOT      "" (prompt later), 1 (--secure-boot) or 0 (--no-secure-boot).
 #   ENCRYPT_DISKS    "" (prompt later), 1 (--encrypt) or 0 (--no-encrypt).
 #   WIFI_SSID        network name from --wifi-ssid, or "".
@@ -36,6 +38,8 @@ parse_common_args() {
   CHECK_RELEASES=""
   DESTRUCTIVE=""
   BACKUP=""
+  FULL_BACKUP=""
+  FULL_BACKUP_DEST=""
   SECURE_BOOT=""
   ENCRYPT_DISKS=""
   WIFI_SSID=""
@@ -58,6 +62,8 @@ parse_common_args() {
       --destructive)    _arg_accepted destructive "$1";    DESTRUCTIVE=1 ;;
       --backup)         _arg_accepted backup "$1";         BACKUP=1 ;;
       --no-backup)      _arg_accepted backup "$1";         BACKUP=0 ;;
+      --full-backup)    _arg_accepted full-backup "$1"; FULL_BACKUP=1; FULL_BACKUP_DEST="${2:?--full-backup needs a destination directory}"; shift ;;
+      --no-full-backup) _arg_accepted full-backup "$1"; FULL_BACKUP=0 ;;
       --secure-boot)    _arg_accepted secure-boot "$1";    SECURE_BOOT=1 ;;
       --no-secure-boot) _arg_accepted secure-boot "$1";    SECURE_BOOT=0 ;;
       --encrypt)        _arg_accepted encrypt "$1";        ENCRYPT_DISKS=1 ;;
@@ -99,6 +105,13 @@ usage_common_flags() {
   if [[ "$accept" == *" backup "* ]]; then
     echo "  --backup|--no-backup back up the existing partition table and boot"
     echo "                       partitions first, or skip it (default: prompted, yes)"
+  fi
+  if [[ "$accept" == *" full-backup "* ]]; then
+    echo "  --full-backup DIR    also image the WHOLE target disk (the existing OS and"
+    echo "                       every partition on it) into DIR on an external drive"
+    echo "                       first — slow, restorable bit-for-bit; --no-full-backup"
+    echo "                       skips it (default: prompted, yes; unattended: only"
+    echo "                       with a DIR)"
   fi
   if [[ "$accept" == *" secure-boot "* ]]; then
     echo "  --secure-boot|--no-secure-boot"
