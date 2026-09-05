@@ -18,16 +18,18 @@ jobs:
         # only a fallback (it has hung on runner mirror flakiness).
         run: command -v shellcheck || (sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck)
       - name: Lint shell scripts
-        run: shellcheck -x -S warning devices/*/scripts/*.sh common/scripts/*.sh common/*/scripts/*.sh common/lib/*.sh test/*.sh
+        run: shellcheck -x -S warning devices/*/scripts/*.sh common/scripts/*.sh common/*/scripts/*.sh common/*/macos/*.sh common/lib/*.sh test/*.sh
       - name: SBOM.md is in sync with sbom.cdx.json
         run: python3 test/sbom-md.py --check
-      - name: Parse Windows rollback script
+      - name: Parse Windows-side PowerShell scripts
         run: |
           pwsh -NoProfile -Command '
-            $errs = $null
-            [void][System.Management.Automation.Language.Parser]::ParseFile(
-              "common/windows-to-ubuntu/windows/rollback-ubuntu.ps1", [ref]$null, [ref]$errs)
-            if ($errs) { $errs; exit 1 } else { "ps1 syntax OK" }'
+            foreach ($f in Get-ChildItem common/windows-to-ubuntu/windows/*.ps1) {
+              $errs = $null
+              [void][System.Management.Automation.Language.Parser]::ParseFile(
+                $f.FullName, [ref]$null, [ref]$errs)
+              if ($errs) { $errs; exit 1 } else { "ps1 syntax OK: $($f.Name)" }
+            }'
 
   kernel-test:
     name: unattended modes in fresh Ubuntu 26.04
@@ -50,6 +52,8 @@ jobs:
         # including the secure-boot and disk-encryption decisions (which
         # default to secure) and the Wi-Fi settings (mode-600 plan file,
         # password never echoed, unattended ssid-without-password skips) —
+        # and the full-image backup (planned unattended only with a
+        # destination; a non-disk target is reported, never imaged) —
         # never defaults to a destructive mode unattended, and documents
         # the shared flag vocabulary; (9) it rejects OSes outside the
         # catalog and its Rocky/Qubes/Windows 11 release checks — including

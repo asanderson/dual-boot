@@ -28,10 +28,17 @@ installer. Budget ~30–45 minutes plus update and backup time.
 The rollback doc's Path A removes Ubuntu cleanly in the expected cases; this
 step is the guarantee for the unexpected ones. With an external USB drive:
 
-1. **Full system image** — Control Panel → *Backup and Restore (Windows 7)* →
-   **Create a system image** → target the external drive. This captures the
-   entire factory disk (Windows, recovery partitions, EFI) and can restore
-   the SSD bit-for-bit to its preconfigured state.
+1. **Full system image** — from an elevated PowerShell, with the external
+   drive (NTFS) plugged in:
+
+   ```powershell
+   .\common\windows-to-ubuntu\windows\backup-windows.ps1 -Target E:
+   ```
+
+   It runs `wbadmin` to image the Windows install, every fixed drive, and
+   the critical (EFI, recovery) volumes — the same image Control Panel →
+   *Backup and Restore (Windows 7)* → **Create a system image** makes by
+   hand — and can restore the SSD bit-for-bit to its preconfigured state.
 2. **Windows recovery drive** — run `RecoveryDrive.exe` (8GB+ USB stick, can
    be a different stick than the Ubuntu one). This is what boots the *System
    Image Recovery* tool if Windows itself ever won't start.

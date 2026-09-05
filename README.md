@@ -12,20 +12,23 @@ common/
   lib/                   Shared bash: helpers (common.sh), the flag/prompt
                            contract (args.sh), OS catalog behavior (oses.sh),
                            and the constraint planner (plan.sh — incl. the
-                           security-plan verifier and the Wi-Fi applier)
+                           security-plan verifier, the Wi-Fi applier, and
+                           the full-disk imager)
   config/os-catalog.env  The OS catalog + latest-release pins (Ubuntu, Qubes,
                            PureOS, Rocky, RHEL, Windows 11 Pro/Home)
   scripts/00-install-plan.sh  Common entry point: decide which OSes,
                            install-vs-upgrade, backups, Secure Boot, disk
                            encryption, Wi-Fi, boot size — once
   docs/install-plan.md   The plan layer: per-OS media/verification table,
-                           the Secure Boot/encryption honoring table, Wi-Fi
+                           the Secure Boot/encryption honoring table, Wi-Fi,
+                           the boot-state and full-image backups
   ubuntu/                Target-OS commons shared by every Ubuntu pair:
     scripts/20-kernel.sh   Release checks, kernel security updates, 7.0+ check
   windows-to-ubuntu/     Pair runbook (steps 1–4 + troubleshooting) and
-    docs/ windows/         the Windows-side rollback script
+    docs/ windows/         the Windows-side backup + rollback scripts
   macos-to-ubuntu/       Pair runbook for Intel Macs (steps 1–4 +
-    docs/                  troubleshooting; APFS resize, Option-boot, rollback)
+    docs/ macos/           troubleshooting; APFS resize, Option-boot, rollback)
+                           and the Mac-side Time Machine backup script
 devices/
   <device>/              Device page: hardware table, boot keys, quirks,
     docs/ scripts/ config/  device guides (drivers, OS upgrades), pins
@@ -47,10 +50,10 @@ test/  .github/          Container test harness + CI
 page says otherwise. No file inside the preinstalled system is touched, its
 boot manager is never replaced (GRUB installs alongside), and every
 prep-time setting is reversible. Each pair runbook's Step 1.0 captures a
-full backup (Windows system image / Time Machine) before anything changes,
-and each ships a rollback runbook that returns the machine to its original
-preconfigured state
-([Windows](common/windows-to-ubuntu/docs/04-rollback.md) ·
+full backup (Windows system image / Time Machine — scripted in each pair's
+`windows/` and `macos/` folder) before anything changes, and each ships a
+rollback runbook that returns the machine to its original preconfigured
+state ([Windows](common/windows-to-ubuntu/docs/04-rollback.md) ·
 [macOS](common/macos-to-ubuntu/docs/04-rollback.md)).
 
 **The one exception is the Librem 14**: its documented flow is a
@@ -58,15 +61,17 @@ preconfigured state
 factory PureOS. Interactive runs confirm the wipe (defaulting to yes, per
 that device's design); unattended runs never touch the disk without the
 explicit `--destructive` flag. "Rollback" there means reinstalling PureOS
-from a live USB — the device page says so up front.
+from a live USB — the device page says so up front — unless the plan's
+`--full-backup DIR` imaged the whole SSD to an external drive first, which
+every flow can do.
 
 ## The path
 
 1. Run the **common install plan** — it decides the shared constraints once
    (which OSes from the [catalog](common/config/os-catalog.env), clean
-   install vs upgrade per OS, boot-state backup, boot partition size), runs
-   the release checks, and writes a plan the device scripts honor
-   ([details](common/docs/install-plan.md)):
+   install vs upgrade per OS, boot-state and full-image backups, boot
+   partition size), runs the release checks, and writes a plan the device
+   scripts honor ([details](common/docs/install-plan.md)):
 
    ```bash
    ./common/scripts/00-install-plan.sh          # unattended: --os,--mode,--backup,...
@@ -106,7 +111,7 @@ has finished with.
 
 | Doc | What's inside |
 |---|---|
-| [The install plan](common/docs/install-plan.md) | The shared constraint layer: the OS catalog with its per-OS media/verification table, install-vs-upgrade semantics, the boot-state backup, the Secure Boot + disk-encryption decisions (with the per-device honoring table), Wi-Fi settings, boot-size guidance, and the flag vocabulary every script accepts |
+| [The install plan](common/docs/install-plan.md) | The shared constraint layer: the OS catalog with its per-OS media/verification table, install-vs-upgrade semantics, the boot-state and full-image backups, the Secure Boot + disk-encryption decisions (with the per-device honoring table), Wi-Fi settings, boot-size guidance, and the flag vocabulary every script accepts |
 | [Software bill of materials](SBOM.md) | Readable SBOM of everything the runbooks put on target machines — the operating systems, firmware (PureBoot/EC), drivers, and packages — as a sorted summary linking into per-component entries with suppliers, versions from the pins, notes, and dependencies. Generated from the machine-readable [sbom.cdx.json](sbom.cdx.json) (CycloneDX 1.6, maintained alongside `os-catalog.env` and the device `versions.env` files); CI keeps the two in sync |
 
 **Pair runbooks** — the common path from factory OS to dual boot. Read the

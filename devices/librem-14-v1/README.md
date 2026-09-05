@@ -66,7 +66,8 @@ firmware or touch the disk without `--destructive`. The script honors the
 decision, Secure Boot, disk encryption, target disk — run
 `common/scripts/00-install-plan.sh` first); explicit flags
 (`--secure-boot|--no-secure-boot`, `--encrypt|--no-encrypt`, ...) override
-the plan, and the boot-state backup runs before the wipe unless declined.
+the plan, and the boot-state backup — plus, with `--full-backup DIR`, a
+full image of the SSD — runs before the wipe unless declined.
 On this device the Secure Boot requirement is satisfied by **PureBoot**
 (which supersedes UEFI Secure Boot); encryption means choosing LUKS in both
 installers — Qubes defaults to it; select it explicitly for PureOS.

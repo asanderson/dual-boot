@@ -2,8 +2,9 @@
 # plan.sh — determines the common installation constraints shared by every
 # device flow: which operating systems to install, whether each is a clean
 # (destructive) install or an in-place upgrade, whether existing boot
-# devices/partitions get backed up first, the boot partition size, and the
-# target disk. Source AFTER common.sh, os-catalog.env, and oses.sh.
+# devices/partitions get backed up first (and, optionally, the whole target
+# disk imaged), the boot partition size, and the target disk. Source AFTER
+# common.sh, os-catalog.env, and oses.sh.
 #
 # The decisions land in PLAN_* variables and can be persisted with
 # plan_write; device scripts source that plan file and honor it.
@@ -84,6 +85,43 @@ plan_backup_decide() {
     PLAN_BACKUP=0
   fi
   log "Boot-state backup: $( [[ "$PLAN_BACKUP" == "1" ]] && echo yes || echo no )"
+}
+
+# plan_full_backup_decide — whether the WHOLE target disk (the existing OS
+# and every partition on it) is imaged to an external drive before anything
+# changes: the scripted form of the runbooks' Step 1.0 full backup.
+# --full-backup DIR / --no-full-backup win; otherwise interactive runs
+# prompt (default YES) and ask for the destination. Unattended runs plan it
+# only with --full-backup DIR — an image needs somewhere to go, so unlike
+# the boot-state backup it cannot default to yes.
+plan_full_backup_decide() {
+  PLAN_FULL_BACKUP_DEST="${FULL_BACKUP_DEST:-}"
+  if [[ -n "${FULL_BACKUP:-}" ]]; then
+    PLAN_FULL_BACKUP="$FULL_BACKUP"
+  elif [[ "${DEV_SETUP_ASSUME_YES:-0}" == "1" ]]; then
+    PLAN_FULL_BACKUP=0
+    log "No --full-backup DIR given — not planning a full image backup."
+  elif confirm "Also image the WHOLE target disk (existing OS + every partition) to an external drive first? Slow; restorable bit-for-bit" y; then
+    read -r -p "Destination directory on the external drive (e.g. /media/${USER:-you}/backup): " PLAN_FULL_BACKUP_DEST || PLAN_FULL_BACKUP_DEST=""
+    if [[ -n "$PLAN_FULL_BACKUP_DEST" ]]; then
+      PLAN_FULL_BACKUP=1
+    else
+      warn "Empty destination — skipping the full image backup."
+      PLAN_FULL_BACKUP=0
+    fi
+  else
+    PLAN_FULL_BACKUP=0
+  fi
+  if [[ "$PLAN_FULL_BACKUP" == "1" ]]; then
+    # Absolute, so the plan file means the same place from a live USB later.
+    [[ "$PLAN_FULL_BACKUP_DEST" == /* ]] || PLAN_FULL_BACKUP_DEST="${PWD}/${PLAN_FULL_BACKUP_DEST}"
+    [[ -d "$PLAN_FULL_BACKUP_DEST" ]] \
+      || warn "Full-backup destination ${PLAN_FULL_BACKUP_DEST} does not exist yet — mount the external drive there before the backup runs."
+    log "Full image backup: yes -> ${PLAN_FULL_BACKUP_DEST}"
+  else
+    PLAN_FULL_BACKUP_DEST=""
+    log "Full image backup: no"
+  fi
 }
 
 # plan_secure_boot_decide — whether Secure Boot (or the device's
@@ -278,6 +316,70 @@ backup_boot_state() {
   ok "Boot-state backup complete: ${dest} (copy it OFF this machine before destructive steps)."
 }
 
+# backup_full_image <disk> <dest-dir> — non-destructive image of the WHOLE
+# <disk> (partition table, every partition, the existing OS) into
+# <dest-dir>/full-backup-<stamp>/: dd piped through zstd (gzip when zstd is
+# absent), SHA256SUMS, and a RESTORE.txt with the exact restore command.
+# The scripted form of the runbooks' Step 1.0 for the Linux-side flows —
+# the Windows and macOS prep scripts do the same with their native tools.
+# Refuses a destination that lives on the disk being imaged (at any
+# layering depth: partition, LUKS, LVM); warns when the disk has mounted
+# filesystems (image from a live USB for a clean one) or the destination
+# looks too small. Returns non-zero when no usable image was written, so a
+# caller about to do something destructive can stop.
+backup_full_image() {
+  local disk="$1" dest="$2" stamp name dir comp ext size_b free_b dest_src
+  if [[ ! -b "$disk" ]]; then
+    warn "Full image backup: ${disk} is not a block device — skipping."
+    return 1
+  fi
+  if [[ ! -d "$dest" ]]; then
+    warn "Full image backup: destination ${dest} is not a directory (external drive not mounted?) — skipping."
+    return 1
+  fi
+  dest_src="$(findmnt -no SOURCE -T "$dest" 2>/dev/null || true)"
+  if [[ -n "$dest_src" ]] && lsblk -snlo NAME "$dest_src" 2>/dev/null | grep -qx "$(basename "$disk")"; then
+    err "Full image backup: ${dest} lives on ${disk} itself — use an external drive."
+    return 1
+  fi
+  if [[ -n "$(lsblk -no MOUNTPOINTS "$disk" 2>/dev/null | tr -d '[:space:]')" ]]; then
+    warn "Filesystems on ${disk} are mounted — the image will be crash-consistent at"
+    warn "  best; for a clean image run this from a live USB."
+  fi
+  size_b="$(lsblk -bdno SIZE "$disk")"
+  free_b="$(df -B1 --output=avail "$dest" | tail -1 | tr -d ' ')"
+  if command_exists zstd; then comp=(zstd -T0 -q); ext="img.zst"; else comp=(gzip -1); ext="img.gz"; fi
+  stamp="$(date +%Y%m%d-%H%M%S)"
+  name="$(basename "$disk")"
+  dir="${dest}/full-backup-${stamp}"
+  log "Imaging ${disk} ($(( size_b / 1024 / 1024 / 1024 )) GiB) -> ${dir}/${name}.${ext} via ${comp[0]} — this takes a while."
+  if (( free_b < size_b )); then
+    warn "Only $(( free_b / 1024 / 1024 / 1024 )) GiB free at ${dest} — compression usually makes it fit when"
+    warn "  most of the disk is empty, but an encrypted disk (LUKS/BitLocker/FileVault) will NOT compress."
+    confirm "Continue anyway?" y || { log "Full image backup skipped."; return 1; }
+  fi
+  mkdir -p "$dir"
+  lsblk -o NAME,SIZE,TYPE,FSTYPE,PARTLABEL,MOUNTPOINTS "$disk" > "${dir}/lsblk.txt" 2>/dev/null || true
+  if command_exists sgdisk; then
+    sudo sgdisk --backup="${dir}/${name}-gpt.bak" "$disk" >/dev/null 2>&1 \
+      || warn "Could not back up the partition table separately (the image still contains it)."
+  fi
+  if ! sudo dd if="$disk" bs=4M status=progress | "${comp[@]}" > "${dir}/${name}.${ext}"; then
+    err "Imaging ${disk} failed (out of space at ${dest}?) — ${dir} is incomplete; do not rely on it."
+    return 1
+  fi
+  ( cd "$dir" && sha256sum "${name}.${ext}" > SHA256SUMS )
+  cat > "${dir}/RESTORE.txt" <<EOR
+Full image of ${disk} ($(( size_b / 1024 / 1024 / 1024 )) GiB) taken ${stamp} by dual-boot (backup_full_image).
+Restore from a live USB with this drive mounted — it OVERWRITES ${disk} entirely:
+  sha256sum -c SHA256SUMS
+  ${comp[0]} -dc ${name}.${ext} | sudo dd of=${disk} bs=4M status=progress conv=fsync
+Partition table only:  sudo sgdisk --load-backup=${name}-gpt.bak ${disk}
+EOR
+  sync
+  ok "Full image backup complete: ${dir} (keep that drive somewhere safe)."
+}
+
 # verify_security_plan [--no-uefi-sb] — post-install, read-only check that
 # the installed system matches the plan's Secure Boot and disk-encryption
 # decisions (plan file supplies defaults; --secure-boot/--encrypt flags on
@@ -340,6 +442,11 @@ plan_summary() {
     log "  ${os}: ${!var:-unset}"
   done
   log "Boot-state backup first: $( [[ "${PLAN_BACKUP}" == "1" ]] && echo yes || echo no )"
+  if [[ "${PLAN_FULL_BACKUP}" == "1" ]]; then
+    log "Full image backup first: yes -> ${PLAN_FULL_BACKUP_DEST}"
+  else
+    log "Full image backup first: no"
+  fi
   log "Secure Boot: $( [[ "${PLAN_SECURE_BOOT}" == "1" ]] && echo "keep enforced" || echo "not required" )"
   log "Disk encryption: $( [[ "${PLAN_ENCRYPT}" == "1" ]] && echo yes || echo no )"
   if [[ -n "${PLAN_WIFI_SSID:-}" ]]; then
@@ -363,6 +470,8 @@ plan_write() {
       echo "DUAL_BOOT_PLAN_MODE_${suffix}=\"${!var}\""
     done
     echo "DUAL_BOOT_PLAN_BACKUP=\"${PLAN_BACKUP}\""
+    echo "DUAL_BOOT_PLAN_FULL_BACKUP=\"${PLAN_FULL_BACKUP}\""
+    printf 'DUAL_BOOT_PLAN_FULL_BACKUP_DEST=%q\n' "${PLAN_FULL_BACKUP_DEST}"
     echo "DUAL_BOOT_PLAN_SECURE_BOOT=\"${PLAN_SECURE_BOOT}\""
     echo "DUAL_BOOT_PLAN_ENCRYPT=\"${PLAN_ENCRYPT}\""
     echo "DUAL_BOOT_PLAN_BOOT_GIB=\"${PLAN_BOOT_GIB}\""

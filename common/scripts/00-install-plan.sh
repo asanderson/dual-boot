@@ -7,16 +7,19 @@
 # common/config/os-catalog.env — Ubuntu, Qubes OS, PureOS, Rocky Linux,
 # RHEL, Windows 11 Pro/Home), whether each is a clean (destructive) install
 # or an in-place upgrade, whether existing boot devices/partitions are
-# backed up first, whether Secure Boot (or the device's verified-boot
-# equivalent) stays enforced, whether OS disks are encrypted at install
-# time, the Wi-Fi settings the installed systems should get (SSID,
-# password, security type, hidden-network — applied by the device scripts
-# via NetworkManager), the boot partition size, and the target disk. Then
-# runs the release checks for the chosen OSes and (if selected) performs
-# the non-destructive boot-state backup.
+# backed up first, whether the whole target disk (the existing OS and every
+# partition on it) is imaged to an external drive first, whether Secure Boot
+# (or the device's verified-boot equivalent) stays enforced, whether OS
+# disks are encrypted at install time, the Wi-Fi settings the installed
+# systems should get (SSID, password, security type, hidden-network —
+# applied by the device scripts via NetworkManager), the boot partition
+# size, and the target disk. Then runs the release checks for the chosen
+# OSes and (if selected) performs the non-destructive backups: the boot
+# state, and the full disk image when a target disk is known.
 #
 # Usage: 00-install-plan.sh [--check-releases] [--os LIST] [--mode OS=MODE]
 #                           [--backup|--no-backup]
+#                           [--full-backup DIR|--no-full-backup]
 #                           [--secure-boot|--no-secure-boot]
 #                           [--encrypt|--no-encrypt] [--wifi-ssid NAME]
 #                           [--wifi-password PW] [--wifi-security T]
@@ -44,13 +47,14 @@ source "${COMMON_DIR}/lib/oses.sh"
 source "${COMMON_DIR}/lib/plan.sh"
 
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
-COMMON_ARGS_ACCEPT="check-releases os mode backup secure-boot encrypt wifi disk boot-size plan-file"
+COMMON_ARGS_ACCEPT="check-releases os mode backup full-backup secure-boot encrypt wifi disk boot-size plan-file"
 
 usage() {
   echo "Usage: $0 [--check-releases] [--os LIST] [--mode OS=MODE] [--backup|--no-backup]"
-  echo "          [--secure-boot|--no-secure-boot] [--encrypt|--no-encrypt]"
-  echo "          [--wifi-ssid NAME] [--wifi-password PW] [--wifi-security T]"
-  echo "          [--wifi-hidden] [--disk DEV] [--boot-size GIB] [--plan-file FILE]"
+  echo "          [--full-backup DIR|--no-full-backup] [--secure-boot|--no-secure-boot]"
+  echo "          [--encrypt|--no-encrypt] [--wifi-ssid NAME] [--wifi-password PW]"
+  echo "          [--wifi-security T] [--wifi-hidden] [--disk DEV] [--boot-size GIB]"
+  echo "          [--plan-file FILE]"
   usage_common_flags
 }
 
@@ -67,6 +71,9 @@ main() {
 
   section "Boot-state backup"
   plan_backup_decide
+
+  section "Full image backup (existing OS + drives)"
+  plan_full_backup_decide
 
   section "Secure Boot"
   plan_secure_boot_decide
@@ -93,11 +100,22 @@ main() {
     done
   fi
 
-  # ---- Backup (non-destructive: writes new files only) -----------------------
+  # ---- Backups (non-destructive: write new files only) -----------------------
   if [[ "${PLAN_BACKUP}" == "1" ]]; then
     section "Backing up the existing boot state"
     require_sudo
     backup_boot_state "${TARGET_DISK:-}" "${HOME}/dual-boot-backups"
+  fi
+  if [[ "${PLAN_FULL_BACKUP}" == "1" ]]; then
+    section "Imaging the existing OS and drives"
+    if [[ -n "${TARGET_DISK:-}" ]]; then
+      require_sudo
+      backup_full_image "${TARGET_DISK}" "${PLAN_FULL_BACKUP_DEST}" \
+        || warn "Full image backup not taken — re-run with the drive mounted, or let the device prep script image before its destructive step."
+    else
+      log "No target disk known (--disk DEV) — the device prep script images it before"
+      log "any destructive step; on Windows/macOS run the pair runbook's Step 1.0 script."
+    fi
   fi
 
   plan_summary

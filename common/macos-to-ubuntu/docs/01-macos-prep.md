@@ -18,7 +18,15 @@ step such as OpenCore Legacy Patcher) live on your device page.
 ## 1.0 Create a recovery safety net (before touching anything)
 
 1. **Full Time Machine backup** to an external drive — this is the
-   disaster-case guarantee (Path B in [Rollback](04-rollback.md)).
+   disaster-case guarantee (Path B in [Rollback](04-rollback.md)). Scripted:
+
+   ```bash
+   ./common/macos-to-ubuntu/macos/backup-macos.sh /Volumes/BackupDrive
+   ```
+
+   makes the drive the Time Machine destination (APFS/HFS+), checks the
+   space, and runs one full backup, blocking until it completes (omit the
+   path to use an already-configured destination).
 2. Confirm you can reach **macOS Recovery** (hold **Cmd+R** at boot, or
    Option to pick a recovery volume) — that's where a restore starts.
 3. If **FileVault** is enabled, know your password/recovery key; resizing
