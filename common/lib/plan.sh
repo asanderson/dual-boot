@@ -323,12 +323,17 @@ backup_boot_state() {
 # The scripted form of the runbooks' Step 1.0 for the Linux-side flows —
 # the Windows and macOS prep scripts do the same with their native tools.
 # Refuses a destination that lives on the disk being imaged (at any
-# layering depth: partition, LUKS, LVM); warns when the disk has mounted
-# filesystems (image from a live USB for a clean one) or the destination
-# looks too small. Returns non-zero when no usable image was written, so a
-# caller about to do something destructive can stop.
+# layering depth: partition, LUKS, LVM, btrfs subvolume, bind mount) and one
+# whose /dev source cannot be resolved; ZFS, network, and RAM-backed
+# destinations cannot be verified and only get a warning. Warns when the
+# disk has mounted filesystems (image from a live USB for a clean one) or
+# the destination looks too small. Forces and checks writeback before
+# checksumming. Returns non-zero when no usable image was written, so a
+# caller about to do something destructive can stop; on success
+# BACKUP_FULL_IMAGE_DIR holds the directory the image landed in.
 backup_full_image() {
-  local disk="$1" dest="$2" stamp name dir comp ext size_b free_b dest_src
+  local disk="$1" dest="$2" stamp name dir comp ext size_b free_b dest_src dest_fs disk_kname ancestry
+  BACKUP_FULL_IMAGE_DIR=""
   if [[ ! -b "$disk" ]]; then
     warn "Full image backup: ${disk} is not a block device — skipping."
     return 1
@@ -337,10 +342,29 @@ backup_full_image() {
     warn "Full image backup: destination ${dest} is not a directory (external drive not mounted?) — skipping."
     return 1
   fi
+  # Kernel names on both sides, so a /dev/disk/by-id disk still matches;
+  # findmnt appends [/subvol] or [/bind/source] to the device — strip it.
+  disk_kname="$(lsblk -dno KNAME "$(readlink -f "$disk")" 2>/dev/null || true)"
+  [[ -n "$disk_kname" ]] || disk_kname="$(basename "$disk")"
   dest_src="$(findmnt -no SOURCE -T "$dest" 2>/dev/null || true)"
-  if [[ -n "$dest_src" ]] && lsblk -snlo NAME "$dest_src" 2>/dev/null | grep -qx "$(basename "$disk")"; then
-    err "Full image backup: ${dest} lives on ${disk} itself — use an external drive."
-    return 1
+  dest_src="${dest_src%%\[*}"
+  dest_fs="$(findmnt -no FSTYPE -T "$dest" 2>/dev/null || true)"
+  if [[ "$dest_src" == /dev/* ]]; then
+    ancestry="$(lsblk -snlo KNAME "$dest_src" 2>/dev/null || true)"
+    if [[ -z "$ancestry" ]]; then
+      err "Full image backup: cannot tell which disk ${dest} (${dest_src}) lives on — refusing to image onto a possibly identical disk."
+      return 1
+    fi
+    if grep -qx "$disk_kname" <<<"$ancestry"; then
+      err "Full image backup: ${dest} lives on ${disk} itself — use an external drive."
+      return 1
+    fi
+  else
+    warn "Full image backup: ${dest} is ${dest_fs:-an unknown filesystem} (${dest_src:-no source}) — cannot verify"
+    warn "  that it is off ${disk}; make sure it is an external or remote drive."
+    case "$dest_fs" in
+      tmpfs|ramfs) warn "  It is RAM-backed: the image is gone at the next reboot — copy it off first." ;;
+    esac
   fi
   if [[ -n "$(lsblk -no MOUNTPOINTS "$disk" 2>/dev/null | tr -d '[:space:]')" ]]; then
     warn "Filesystems on ${disk} are mounted — the image will be crash-consistent at"
@@ -358,7 +382,10 @@ backup_full_image() {
     warn "  most of the disk is empty, but an encrypted disk (LUKS/BitLocker/FileVault) will NOT compress."
     confirm "Continue anyway?" y || { log "Full image backup skipped."; return 1; }
   fi
-  mkdir -p "$dir"
+  if ! mkdir -p "$dir"; then
+    err "Full image backup: cannot create ${dir} (read-only or full drive?)."
+    return 1
+  fi
   lsblk -o NAME,SIZE,TYPE,FSTYPE,PARTLABEL,MOUNTPOINTS "$disk" > "${dir}/lsblk.txt" 2>/dev/null || true
   if command_exists sgdisk; then
     sudo sgdisk --backup="${dir}/${name}-gpt.bak" "$disk" >/dev/null 2>&1 \
@@ -368,7 +395,16 @@ backup_full_image() {
     err "Imaging ${disk} failed (out of space at ${dest}?) — ${dir} is incomplete; do not rely on it."
     return 1
   fi
-  ( cd "$dir" && sha256sum "${name}.${ext}" > SHA256SUMS )
+  # Writeback first: dd | zstd exiting 0 only means the page cache took the
+  # data; a drive that dropped off mid-write fails here, not silently later.
+  if ! sync "${dir}/${name}.${ext}"; then
+    err "Flushing the image to ${dest} failed (drive unplugged or failing?) — ${dir} is incomplete; do not rely on it."
+    return 1
+  fi
+  if ! ( cd "$dir" && sha256sum "${name}.${ext}" > SHA256SUMS ); then
+    err "Checksumming ${dir}/${name}.${ext} failed — do not rely on that image."
+    return 1
+  fi
   cat > "${dir}/RESTORE.txt" <<EOR
 Full image of ${disk} ($(( size_b / 1024 / 1024 / 1024 )) GiB) taken ${stamp} by dual-boot (backup_full_image).
 Restore from a live USB with this drive mounted — it OVERWRITES ${disk} entirely:
@@ -376,7 +412,12 @@ Restore from a live USB with this drive mounted — it OVERWRITES ${disk} entire
   ${comp[0]} -dc ${name}.${ext} | sudo dd of=${disk} bs=4M status=progress conv=fsync
 Partition table only:  sudo sgdisk --load-backup=${name}-gpt.bak ${disk}
 EOR
-  sync
+  if ! sync -f "$dir"; then
+    err "Flushing ${dir} failed — the checksum or restore notes may be missing; do not rely on it."
+    return 1
+  fi
+  # shellcheck disable=SC2034  # read by callers that record the image in the plan
+  BACKUP_FULL_IMAGE_DIR="$dir"
   ok "Full image backup complete: ${dir} (keep that drive somewhere safe)."
 }
 
@@ -472,6 +513,11 @@ plan_write() {
     echo "DUAL_BOOT_PLAN_BACKUP=\"${PLAN_BACKUP}\""
     echo "DUAL_BOOT_PLAN_FULL_BACKUP=\"${PLAN_FULL_BACKUP}\""
     printf 'DUAL_BOOT_PLAN_FULL_BACKUP_DEST=%q\n' "${PLAN_FULL_BACKUP_DEST}"
+    if [[ -n "${PLAN_FULL_BACKUP_DONE:-}" ]]; then
+      # Where a completed image of DUAL_BOOT_PLAN_DISK landed — device
+      # scripts offer to skip a second pass.
+      printf 'DUAL_BOOT_PLAN_FULL_BACKUP_DONE=%q\n' "${PLAN_FULL_BACKUP_DONE}"
+    fi
     echo "DUAL_BOOT_PLAN_SECURE_BOOT=\"${PLAN_SECURE_BOOT}\""
     echo "DUAL_BOOT_PLAN_ENCRYPT=\"${PLAN_ENCRYPT}\""
     echo "DUAL_BOOT_PLAN_BOOT_GIB=\"${PLAN_BOOT_GIB}\""

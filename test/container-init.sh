@@ -83,6 +83,15 @@ set -e
 grep -q "This script runs on macOS" <<<"$out" || fail "test 5: missing wrong-OS message"
 echo "  PASS: exited ${rc} with the wrong-OS message"
 
+echo "### [test 5b] backup-macos.sh on Linux: must refuse gracefully; --help must work"
+set +e
+out="$(as_dev ./common/macos-to-ubuntu/macos/backup-macos.sh /home/dev/ext-drive 2>&1)"; rc=$?
+set -e
+[[ $rc -ne 0 ]] || fail "test 5b: expected non-zero exit on non-macOS"
+grep -q "This script runs on macOS" <<<"$out" || fail "test 5b: missing wrong-OS message"
+out="$(as_dev ./common/macos-to-ubuntu/macos/backup-macos.sh --help 2>&1)" || fail "test 5b: --help exited non-zero"
+grep -q "Usage:" <<<"$out" || fail "test 5b: --help printed no usage"
+echo "  PASS: exited ${rc} with the wrong-OS message; --help works"
 echo "### [test 6] 10-dual-install-prep.sh on non-Purism hardware: must refuse"
 set +e
 out="$(as_dev ./devices/librem-14-v1/scripts/10-dual-install-prep.sh 2>&1)"; rc=$?
@@ -137,6 +146,14 @@ grep -q 'DUAL_BOOT_PLAN_FULL_BACKUP_DEST=/home/dev/ext-drive' <<<"$plan" || fail
 out="$(as_dev ./common/scripts/00-install-plan.sh --os ubuntu --no-backup --no-full-backup 2>&1)" \
   || { echo "$out" | tail -20; fail "test 8: --no-full-backup run exited non-zero"; }
 grep -q 'DUAL_BOOT_PLAN_FULL_BACKUP="0"' /home/dev/.dual-boot-plan.env || fail "test 8: --no-full-backup not honored"
+out="$(as_dev ./common/scripts/00-install-plan.sh --os ubuntu --no-backup --full-backup ext-drive 2>&1)" \
+  || { echo "$out" | tail -20; fail "test 8: relative --full-backup run exited non-zero"; }
+grep -q 'DUAL_BOOT_PLAN_FULL_BACKUP_DEST=/home/dev/dual-boot/ext-drive' /home/dev/.dual-boot-plan.env \
+  || fail "test 8: a relative --full-backup destination must be persisted as an absolute path"
+out="$(as_dev "./common/scripts/00-install-plan.sh --os ubuntu --no-backup --full-backup '/home/dev/my backup'" 2>&1)" \
+  || { echo "$out" | tail -20; fail "test 8: space-in-path --full-backup run exited non-zero"; }
+as_dev 'source ~/.dual-boot-plan.env && [[ "$DUAL_BOOT_PLAN_FULL_BACKUP_DEST" == "/home/dev/my backup" ]]' \
+  || fail "test 8: a destination with a space must survive the plan file round trip"
 # One quoted string: as_dev flattens its args into a bash -c line, so the
 # space-in-password case needs its quoting embedded, not re-split.
 out="$(as_dev "./common/scripts/00-install-plan.sh --os ubuntu --no-backup \

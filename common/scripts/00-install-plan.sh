@@ -100,6 +100,25 @@ main() {
     done
   fi
 
+  # A full image needs a disk: interactive runs may pick one now; without
+  # one the image is deferred to the device prep script.
+  if [[ "${PLAN_FULL_BACKUP}" == "1" && -z "${TARGET_DISK:-}" && "${DEV_SETUP_ASSUME_YES:-0}" != "1" ]]; then
+    section "Disk to image"
+    log "Disks on this machine:"
+    lsblk -dno NAME,SIZE,MODEL 2>/dev/null | sed 's|^|  /dev/|'
+    local r
+    read -r -p "Disk to image now (empty = let the device prep script image it later): " r || r=""
+    if [[ -n "$r" ]]; then
+      [[ -b "$r" ]] || die "${r} is not a block device."
+      TARGET_DISK="$r"
+    fi
+  fi
+
+  # Persist the decisions BEFORE the backups: an image can take hours, and
+  # an interrupted run must not lose every answer given above.
+  plan_summary
+  plan_write "${PLAN_FILE}"
+
   # ---- Backups (non-destructive: write new files only) -----------------------
   if [[ "${PLAN_BACKUP}" == "1" ]]; then
     section "Backing up the existing boot state"
@@ -110,16 +129,19 @@ main() {
     section "Imaging the existing OS and drives"
     if [[ -n "${TARGET_DISK:-}" ]]; then
       require_sudo
-      backup_full_image "${TARGET_DISK}" "${PLAN_FULL_BACKUP_DEST}" \
-        || warn "Full image backup not taken — re-run with the drive mounted, or let the device prep script image before its destructive step."
+      if backup_full_image "${TARGET_DISK}" "${PLAN_FULL_BACKUP_DEST}"; then
+        # Record it, so the device prep script can offer to skip a second pass.
+        # shellcheck disable=SC2034  # consumed by plan_write in common/lib/plan.sh
+        PLAN_FULL_BACKUP_DONE="${BACKUP_FULL_IMAGE_DIR}"
+        plan_write "${PLAN_FILE}"
+      else
+        warn "Full image backup not taken — re-run with the drive mounted, or let the device prep script image before its destructive step."
+      fi
     else
       log "No target disk known (--disk DEV) — the device prep script images it before"
       log "any destructive step; on Windows/macOS run the pair runbook's Step 1.0 script."
     fi
   fi
-
-  plan_summary
-  plan_write "${PLAN_FILE}"
 
   section "Next steps"
   log "Run your device's scripts — they read ${PLAN_FILE} and honor this plan:"

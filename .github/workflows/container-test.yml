@@ -44,16 +44,18 @@ jobs:
         # kernel, and reports the latest upstream kernel from kernel.org;
         # (3) the device driver script fails gracefully with no GPU;
         # (4) the Mac device script refuses to run on non-Apple hardware;
-        # (5) the macOS-side OCLP script refuses to run on Linux;
+        # (5) the macOS-side OCLP check and Time Machine backup scripts
+        # refuse to run on Linux;
         # (6) the Librem 14 dual-install script refuses on non-Purism
         # hardware before anything destructive; (7) --destructive does not
-        # bypass that gate, and --help documents both flags; (8) the common
+        # bypass that gate, and --help documents its flags; (8) the common
         # install-plan script honors defaults + flags in the written plan —
         # including the secure-boot and disk-encryption decisions (which
         # default to secure) and the Wi-Fi settings (mode-600 plan file,
         # password never echoed, unattended ssid-without-password skips) —
         # and the full-image backup (planned unattended only with a
-        # destination; a non-disk target is reported, never imaged) —
+        # destination; a non-disk target is reported, never imaged; relative
+        # destinations are made absolute and paths with spaces round-trip) —
         # never defaults to a destructive mode unattended, and documents
         # the shared flag vocabulary; (9) it rejects OSes outside the
         # catalog and its Rocky/Qubes/Windows 11 release checks — including

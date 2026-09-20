@@ -35,10 +35,13 @@ step is the guarantee for the unexpected ones. With an external USB drive:
    .\common\windows-to-ubuntu\windows\backup-windows.ps1 -Target E:
    ```
 
-   It runs `wbadmin` to image the Windows install, every fixed drive, and
+   It runs `wbadmin` to image the Windows install, every fixed drive, the
+   vendor's factory-recovery partition (MSI's `BIOS_RVY`), and
    the critical (EFI, recovery) volumes — the same image Control Panel →
    *Backup and Restore (Windows 7)* → **Create a system image** makes by
    hand — and can restore the SSD bit-for-bit to its preconfigured state.
+   The image is stored **unencrypted** even if C: uses BitLocker: keep the
+   drive physically safe, or turn on BitLocker To Go for it first.
 2. **Windows recovery drive** — run `RecoveryDrive.exe` (8GB+ USB stick, can
    be a different stick than the Ubuntu one). This is what boots the *System
    Image Recovery* tool if Windows itself ever won't start.

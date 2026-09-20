@@ -14,7 +14,7 @@ plan script asks (or takes flags for) exactly those decisions:
 | Encrypt OS disks at install time | prompt, defaults to **yes** | `--encrypt` / `--no-encrypt` (else yes — enacted by the OS installers) |
 | Wi-Fi for the installed systems | prompt (default: none); SSID, password (hidden input), security type, hidden-network | `--wifi-ssid` / `--wifi-password` (or `DUAL_BOOT_WIFI_PASSWORD`) / `--wifi-security wpa-psk\|sae\|open` / `--wifi-hidden` (planned only when an SSID is given) |
 | Boot partition size | editable, default 2 GiB | `--boot-size GIB` |
-| Target disk | device default | `--disk DEV` |
+| Target disk | device default; prompted when a full image was requested and no disk is known | `--disk DEV` |
 
 The decisions are written to a plan file (default `~/.dual-boot-plan.env`,
 `--plan-file` to change) that the device scripts read; explicit flags on a
@@ -83,15 +83,26 @@ target disk** — partition table, every partition, the existing OS — into
 `dd` piped through `zstd` (`gzip` when zstd is absent), a `SHA256SUMS`, the
 GPT table on its own, and a `RESTORE.txt` with the exact restore command.
 It refuses a destination that lives on the disk being imaged (at any
-layering depth), warns when the disk has mounted filesystems (image from a
-live USB for a clean one) or the destination looks too small (compression
-rescues a mostly-empty disk; an encrypted one will not compress), and
-reports failure honestly instead of leaving a half-image that looks whole.
+layering depth — partition, LUKS, LVM, btrfs subvolume, bind mount — and it
+refuses outright when a `/dev` source cannot be resolved; ZFS, network, and
+RAM-backed destinations only get a warning, because they cannot be
+verified), warns when the disk has mounted filesystems (image from a live
+USB for a clean one) or the destination looks too small (compression
+rescues a mostly-empty disk; an encrypted one will not compress), forces
+and checks writeback before checksumming, and reports failure honestly
+instead of leaving a half-image that looks whole.
 
 Where it runs: the plan script images right away when it knows the target
-disk (`--disk DEV`); otherwise it defers to the device prep script — on the
-Librem 14 the image is taken right before the wipe, and a failed image
-**aborts the wipe**. The Windows and macOS preps happen inside the factory
+disk (`--disk DEV`, or the disk prompt an interactive run gets when a full
+image was requested); otherwise it defers to the device prep script — on
+the Librem 14 the image is taken right before the wipe, and a failed image
+**aborts the wipe**. The plan file is written *before* the image starts,
+so an interrupted image loses no answers, and a completed image is recorded
+in it (`DUAL_BOOT_PLAN_FULL_BACKUP_DONE`), so the device script offers to
+skip a second multi-hour pass instead of imaging again by default — only
+when the recorded image is of the same disk and its `SHA256SUMS` is still
+readable; otherwise it images again. The
+Windows and macOS preps happen inside the factory
 OS, so each pair runbook's Step 1.0 has a native script for the same job:
 [`backup-windows.ps1`](../windows-to-ubuntu/windows/backup-windows.ps1)
 (a `wbadmin` system image — what System Image Recovery restores) and

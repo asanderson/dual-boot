@@ -59,6 +59,7 @@ usage() {
 # shellcheck disable=SC2034  # consumed by parse_common_args in common/lib/args.sh
 COMMON_ARGS_ACCEPT="check-releases destructive backup full-backup secure-boot encrypt wifi disk boot-size download-dir usb plan-file"
 parse_common_args "$@"
+FULL_BACKUP_DONE=""   # from the plan, when 00-install-plan.sh already imaged the disk
 
 # Honor a plan from 00-install-plan.sh: plan values become the defaults for
 # anything not set explicitly by a flag on this invocation.
@@ -71,6 +72,7 @@ apply_plan() {
   if [[ -z "${FULL_BACKUP}" && -n "${DUAL_BOOT_PLAN_FULL_BACKUP:-}" ]]; then
     FULL_BACKUP="${DUAL_BOOT_PLAN_FULL_BACKUP}"
     FULL_BACKUP_DEST="${DUAL_BOOT_PLAN_FULL_BACKUP_DEST:-}"
+    FULL_BACKUP_DONE="${DUAL_BOOT_PLAN_FULL_BACKUP_DONE:-}"
   fi
   [[ -z "${SECURE_BOOT}" && -n "${DUAL_BOOT_PLAN_SECURE_BOOT:-}" ]] && SECURE_BOOT="${DUAL_BOOT_PLAN_SECURE_BOOT}"
   [[ -z "${ENCRYPT_DISKS}" && -n "${DUAL_BOOT_PLAN_ENCRYPT:-}" ]] && ENCRYPT_DISKS="${DUAL_BOOT_PLAN_ENCRYPT}"
@@ -224,9 +226,15 @@ main() {
     [[ -b "$TARGET_DISK" ]] || die "${TARGET_DISK} is not a block device."
     # Never wipe the disk hosting the running system: the factory PureOS lives
     # on the internal SSD, so this step runs from the PureOS live USB.
-    local root_src
+    # Walk the root filesystem's whole device ancestry (partition, LUKS,
+    # LVM) and compare kernel names, so a LUKS root — the factory PureOS
+    # default — or a by-id --disk cannot slip past this check.
+    local root_src disk_kname
     root_src="$(findmnt -no SOURCE / 2>/dev/null || true)"
-    if [[ -n "$root_src" ]] && [[ "$(lsblk -no PKNAME "$root_src" 2>/dev/null || true)" == "$(basename "$TARGET_DISK")" ]]; then
+    root_src="${root_src%%\[*}"
+    disk_kname="$(lsblk -dno KNAME "$(readlink -f "$TARGET_DISK")" 2>/dev/null || true)"
+    [[ -n "$disk_kname" ]] || disk_kname="$(basename "$TARGET_DISK")"
+    if [[ -n "$root_src" ]] && lsblk -snlo NAME "$root_src" 2>/dev/null | grep -qx "$disk_kname"; then
       die "${TARGET_DISK} hosts the running system — boot the PureOS live USB and run this step from there."
     fi
     # Back up the existing partition table and boot partitions first, per the
@@ -242,6 +250,16 @@ main() {
       plan_full_backup_decide
       FULL_BACKUP="$PLAN_FULL_BACKUP"
       FULL_BACKUP_DEST="$PLAN_FULL_BACKUP_DEST"
+    fi
+    # Only an image of THIS disk that is still there to see counts: the wipe
+    # below must never lean on a stale plan or an image of another disk.
+    if [[ "$FULL_BACKUP" == "1" && -n "$FULL_BACKUP_DONE" \
+          && "$(readlink -f "${DUAL_BOOT_PLAN_DISK:-}" 2>/dev/null)" == "$(readlink -f "$TARGET_DISK")" \
+          && -f "${FULL_BACKUP_DONE}/SHA256SUMS" ]]; then
+      log "The plan script already imaged ${TARGET_DISK} to ${FULL_BACKUP_DONE}."
+      if ! confirm "Image it again now (a second, clean image from this live USB)?" n; then
+        FULL_BACKUP=0
+      fi
     fi
     if [[ "$FULL_BACKUP" == "1" ]]; then
       backup_full_image "$TARGET_DISK" "$FULL_BACKUP_DEST" \

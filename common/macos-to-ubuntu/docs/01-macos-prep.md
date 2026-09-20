@@ -24,9 +24,12 @@ step such as OpenCore Legacy Patcher) live on your device page.
    ./common/macos-to-ubuntu/macos/backup-macos.sh /Volumes/BackupDrive
    ```
 
-   makes the drive the Time Machine destination (APFS/HFS+), checks the
-   space, and runs one full backup, blocking until it completes (omit the
-   path to use an already-configured destination).
+   makes the drive the Time Machine destination (APFS/HFS+, on a separate
+   physical disk — Terminal needs **Full Disk Access** for this: System
+   Settings → Privacy & Security), checks the space, and runs one full
+   backup, blocking until it completes (omit the path to use an
+   already-configured destination). The backup is unencrypted unless the
+   drive is *APFS (Encrypted)* or *Encrypt backups* is on.
 2. Confirm you can reach **macOS Recovery** (hold **Cmd+R** at boot, or
    Option to pick a recovery volume) — that's where a restore starts.
 3. If **FileVault** is enabled, know your password/recovery key; resizing
