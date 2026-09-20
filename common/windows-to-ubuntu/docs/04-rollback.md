@@ -84,6 +84,15 @@ partitions and BitLocker setup.
 This is why Step 1.0 is not optional: Path A covers every expected case, but
 the image is the guarantee.
 
+## Path C — restore a whole-disk image made by the plan's `--full-backup`
+
+If you imaged the SSD from an Ubuntu live USB with the install plan's
+`--full-backup DIR` ([details](../../docs/install-plan.md#the-full-image-backup)),
+that image returns the **entire disk** — Windows, the recovery partitions,
+the EFI partition, and anything Ubuntu added — to the moment it was taken.
+Boot the Ubuntu live USB, mount the external drive, `cd` into its
+`full-backup-<stamp>` directory, run `sha256sum -c SHA256SUMS`, then the
+exact command in `RESTORE.txt`. It overwrites the whole SSD.
 ## What was never touched (so needs no rollback)
 
 - The Windows partition's contents — no file in `C:\` is created, modified,

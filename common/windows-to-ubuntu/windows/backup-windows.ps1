@@ -9,7 +9,9 @@
 #             cannot be one of the drives being backed up)
 #   -Include  drive letters to back up besides the critical volumes (OS,
 #             EFI, recovery); default: every fixed volume with a letter
-#             except the target — the existing operating system and drives
+#             except the target, plus every unlettered NTFS volume on the
+#             OS disk (the vendor's factory-recovery partition) — the
+#             existing operating system and drives
 # Confirms before starting. Non-destructive: it only writes to the target.
 
 #Requires -RunAsAdministrator
@@ -20,7 +22,13 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-function Confirm-Step([string]$Prompt) {
+function Confirm-Step([string]$Prompt, [switch]$DefaultYes) {
+    # A backup is non-destructive, so (unlike the rollback script) a bare
+    # Enter means yes here — the repo's rule for every backup prompt.
+    if ($DefaultYes) {
+        $reply = Read-Host "$Prompt [Y/n]"
+        return $reply -notmatch '^[Nn]'
+    }
     $reply = Read-Host "$Prompt [y/N]"
     return $reply -match '^[Yy]'
 }
@@ -38,33 +46,69 @@ $system = $env:SystemDrive.TrimEnd(':').ToUpper()
 if ($targetLetter -eq $system) { throw "$Target is the Windows drive itself - back up TO an external drive." }
 $targetVol = Get-Volume -DriveLetter $targetLetter -ErrorAction SilentlyContinue
 if ($null -eq $targetVol) { throw "$Target is not a mounted volume - plug the external drive in first." }
+if ($targetVol.DriveType -ne 'Fixed') {
+    throw "$Target is $($targetVol.DriveType) media; Windows Backup needs a fixed (hard-disk class) NTFS drive - USB flash sticks and SD cards are not accepted, USB HDD/SSD enclosures are."
+}
+if ($targetVol.FileSystemType -eq 'Unknown') {
+    throw "$Target has no readable filesystem - locked (BitLocker To Go) or unformatted? Unlock it, or format it as NTFS."
+}
 if ($targetVol.FileSystemType -ne 'NTFS') {
     throw "$Target is $($targetVol.FileSystemType); Windows Backup needs an NTFS target (Explorer -> right-click the drive -> Format -> NTFS)."
 }
-$osDisk  = (Get-Partition -DriveLetter $system).DiskNumber
-$tgtDisk = (Get-Partition -DriveLetter $targetLetter).DiskNumber
-if ($osDisk -eq $tgtDisk) {
-    Write-Host "  WARNING: $Target is on the same physical disk as ${system}: - a disk failure or a" -ForegroundColor Yellow
-    Write-Host "  repartitioning mishap takes the backup with it. Use an external drive." -ForegroundColor Yellow
+# Warning only: dynamic disks, spanned volumes and superfloppy media have
+# no MSFT_Partition behind the letter, and that must not abort the backup.
+$osPart  = Get-Partition -DriveLetter $system -ErrorAction SilentlyContinue
+$tgtPart = Get-Partition -DriveLetter $targetLetter -ErrorAction SilentlyContinue
+if ($null -ne $osPart -and $null -ne $tgtPart) {
+    if ($osPart.DiskNumber -eq $tgtPart.DiskNumber) {
+        Write-Host "  WARNING: $Target is on the same physical disk as ${system}: - a disk failure or a" -ForegroundColor Yellow
+        Write-Host "  repartitioning mishap takes the backup with it. Use an external drive." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  (Could not tell which physical disk $Target is on - make sure it is an external drive.)"
 }
 
 # --- 2. What gets backed up -------------------------------------------------
 Write-Host "[2/3] Volumes" -ForegroundColor Cyan
-if (-not $Include) {
-    $Include = Get-Volume |
-        Where-Object { $_.DriveType -eq 'Fixed' -and $_.DriveLetter -and "$($_.DriveLetter)" -ne $targetLetter } |
-        ForEach-Object { "$($_.DriveLetter)" }
+# What gets imaged: the OS volume, every lettered fixed volume (the user's
+# "drives"), and every other NTFS/ReFS volume on the OS disk even without a
+# letter - that is where vendors keep their factory-recovery partition
+# (MSI's BIOS_RVY, for one), and -allCritical alone leaves those out.
+# wbadmin takes unlettered volumes as \?\Volume{GUID}\ paths.
+$osDiskNumber = (Get-Partition -DriveLetter $system -ErrorAction SilentlyContinue).DiskNumber
+$entries = @()   # objects: Arg ('C:' or '\?\Volume{...}\'), Label, Used (bytes)
+function Add-Entry($vol, $arg, $label) {
+    $script:entries += [pscustomobject]@{ Arg = $arg; Label = $label; Used = ($vol.Size - $vol.SizeRemaining) }
 }
-$Include = @($Include | ForEach-Object { $_.Trim().TrimEnd('\', ':').ToUpper() } |
-    Where-Object { $_ -ne $targetLetter } | Sort-Object -Unique)
-if ($Include -notcontains $system) { $Include = @($system) + $Include }
+if ($Include) {
+    foreach ($item in @($Include | ForEach-Object { $_.Trim().TrimEnd('\', ':').ToUpper() } | Sort-Object -Unique)) {
+        if ($item -eq $targetLetter) { continue }
+        $vol = Get-Volume -DriveLetter $item -ErrorAction SilentlyContinue
+        if ($null -eq $vol) { throw "-Include: ${item}: is not a mounted volume." }
+        Add-Entry $vol "${item}:" "${item}: ($($vol.FileSystemLabel))"
+    }
+    if (-not ($entries | Where-Object { $_.Arg -eq "${system}:" })) {
+        $vol = Get-Volume -DriveLetter $system
+        $entries = @([pscustomobject]@{ Arg = "${system}:"; Label = "${system}: ($($vol.FileSystemLabel))"; Used = ($vol.Size - $vol.SizeRemaining) }) + $entries
+    }
+} else {
+    foreach ($vol in (Get-Volume | Where-Object { $_.DriveType -eq 'Fixed' -and $_.FileSystemType -in 'NTFS', 'ReFS' })) {
+        $letter = ("$($vol.DriveLetter)").Trim([char]0)
+        if ($letter -eq $targetLetter) { continue }
+        $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path } | Select-Object -First 1
+        $onOsDisk = ($null -ne $part -and $null -ne $osDiskNumber -and $part.DiskNumber -eq $osDiskNumber)
+        if (-not $letter -and -not $onOsDisk) { continue }
+        if ($letter) {
+            Add-Entry $vol "${letter}:" "${letter}: ($($vol.FileSystemLabel))"
+        } else {
+            Add-Entry $vol $vol.Path "$($vol.FileSystemLabel) [no letter, disk $($part.DiskNumber)]"
+        }
+    }
+    $entries = @($entries | Sort-Object { $_.Arg -ne "${system}:" }, { $_.Arg })
+}
 $used = 0
-foreach ($letter in $Include) {
-    $vol = Get-Volume -DriveLetter $letter -ErrorAction SilentlyContinue
-    if ($null -eq $vol) { throw "-Include: ${letter}: is not a mounted volume." }
-    $used += ($vol.Size - $vol.SizeRemaining)
-}
-$list = ($Include | ForEach-Object { "${_}:" }) -join ', '
+foreach ($entry in $entries) { $used += $entry.Used }
+$list = ($entries | ForEach-Object { $_.Label }) -join ', '
 Write-Host "  Backing up: $list + the critical volumes (EFI, recovery) - ~$([math]::Round($used/1GB,1)) GB in use"
 Write-Host "  To:         $Target ($($targetVol.FileSystemLabel)) - $([math]::Round($targetVol.SizeRemaining/1GB,1)) GB free"
 if ($targetVol.SizeRemaining -lt $used) {
@@ -74,15 +118,17 @@ if ($targetVol.SizeRemaining -lt $used) {
 
 # --- 3. Run it ----------------------------------------------------------------
 Write-Host "[3/3] System image" -ForegroundColor Cyan
-if (-not (Confirm-Step "  Start the system image now (takes a while; Windows stays usable)?")) {
+if (-not (Confirm-Step "  Start the system image now (takes a while; Windows stays usable)?" -DefaultYes)) {
     Write-Host "  Skipped. Re-run when the external drive is ready."
     exit 0
 }
-$includeArg = ($Include | ForEach-Object { "${_}:" }) -join ','
+$includeArg = ($entries | ForEach-Object { $_.Arg }) -join ','
 Write-Host "  wbadmin start backup -backupTarget:$Target -include:$includeArg -allCritical -quiet"
 & wbadmin start backup "-backupTarget:$Target" "-include:$includeArg" -allCritical -quiet
 if ($LASTEXITCODE -ne 0) { throw "wbadmin exited with code $LASTEXITCODE - the backup did NOT complete." }
 Write-Host "  System image written to $Target\WindowsImageBackup\$env:COMPUTERNAME" -ForegroundColor Green
+Write-Host "  NOTE: the image is stored UNENCRYPTED even if ${system}: uses BitLocker - keep the drive" -ForegroundColor Yellow
+Write-Host "  physically safe, or turn on BitLocker To Go for $Target before running this." -ForegroundColor Yellow
 
 Write-Host ""
 Write-Host "=== Next ===" -ForegroundColor Cyan

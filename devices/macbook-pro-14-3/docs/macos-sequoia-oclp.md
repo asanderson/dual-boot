@@ -29,8 +29,10 @@ writing — use the newest from the
 
 ## Steps
 
-1. **Back up** — full Time Machine backup (this doubles as common-runbook
-   Step 1.0).
+1. **Back up** — full Time Machine backup, scripted as
+   `./common/macos-to-ubuntu/macos/backup-macos.sh /Volumes/BackupDrive`
+   (this doubles as common-runbook Step 1.0, and it is the Ventura state
+   the *Reverting* section restores).
 2. **Download OCLP** — grab the `.pkg`/app from the official
    [GitHub releases](https://github.com/dortania/OpenCore-Legacy-Patcher/releases)
    (Dortania is the only official source) and open it on the Mac.

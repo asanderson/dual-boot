@@ -126,7 +126,8 @@ else
   fi
   if confirm "Start the Sequoia upgrade now (guided, human-driven — several reboots)?" n; then
     log "Follow the guide: ${GUIDE}"
-    log "Summary: Time Machine backup -> install OCLP -> Create macOS Installer"
+    log "Summary: Time Machine backup (common/macos-to-ubuntu/macos/backup-macos.sh)"
+    log "-> install OCLP -> Create macOS Installer"
     log "(Sequoia) -> Build & Install OpenCore -> boot installer via Option key"
     log "-> Post-Install Root Patches -> updates via OCLP thereafter."
     [ -e "/Applications/OpenCore-Legacy-Patcher.app" ] && open -a "OpenCore-Legacy-Patcher" 2>/dev/null
@@ -136,4 +137,4 @@ else
 fi
 
 echo "==> Done"
-ok "Next: common/macos-to-ubuntu/docs/01-macos-prep.md (backup, APFS resize, USB)."
+ok "Next: common/macos-to-ubuntu/docs/01-macos-prep.md (backup via macos/backup-macos.sh, APFS resize, USB)."
