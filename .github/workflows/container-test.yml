@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install shellcheck
         # ubuntu-latest runners ship shellcheck preinstalled; the apt path is
         # only a fallback (it has hung on runner mirror flakiness).
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run mode assertions in a fresh container
         # Asserts: (1) unattended 20-kernel.sh without --check-releases skips
         # release checks and installs nothing; (2) with --check-releases it
@@ -71,7 +71,7 @@ jobs:
     # leave headroom for slower runner days.
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run driver GPU-path test in a fresh container
         # An lspci stub exposes the MSI Raider 18's RTX 5090 so
         # 10-nvidia-driver.sh's GPU-present path runs for real: run A now
