@@ -1,0 +1,18 @@
+# Nightly dependency checks for everything that lives in an ecosystem
+# manifest (GitHub Actions). The OS/firmware pins in common/config/os-catalog.env
+# and devices/*/config/versions.env are outside Dependabot's reach; the
+# upstream-pins workflow covers those on the same cadence.
+# No explicit labels: Dependabot then applies (and creates) its default
+# 'dependencies' label itself; a custom labels list must already exist.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: cron
+      cronjob: "41 6 * * *"   # nightly, 06:41 UTC
+    commit-message:
+      prefix: "ci"
+    groups:
+      github-actions:
+        patterns: ["*"]
