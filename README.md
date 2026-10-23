@@ -35,7 +35,9 @@ devices/
 sbom.cdx.json            CycloneDX SBOM of everything the runbooks install
 SBOM.md                  Readable SBOM rendering (test/sbom-md.py keeps it
                            in sync; CI checks)
-test/  .github/          Container test harness + CI
+test/  .github/          Container test harness + CI; test/upstream-pins.py
+                           checks every pin against upstream nightly and the
+                           upstream-pins workflow opens a bump PR
 ```
 
 ## Supported configurations
