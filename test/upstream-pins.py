@@ -39,14 +39,18 @@ scripts), so a bump here is what those checks would report as drift:
     PUREBOOT_VERSION     PUREBOOT_VERSION_14 inside Purism's coreboot_util.sh
     (LIBREM_EC_VERSION has no machine-readable source; not checked)
   devices/msi-raider-18-hx-ai/config/versions.env
-    NVIDIA_DRIVER_BRANCH REPORT ONLY (nvidia.com Unix driver page): a branch
-                         change is a hardware-support decision
+    NVIDIA_DRIVER_BRANCH REPORT ONLY (newest nvidia-driver-NNN-open in the
+                         Ubuntu archive for UBUNTU_VERSION, release + updates
+                         pockets, which is where 10-nvidia-driver.sh installs
+                         it from): a branch change is a hardware-support
+                         decision
 
 A resolver that fails (network, format change) is reported and skipped; it
 never blocks the other pins. Exit status is 0 unless --strict is given and a
 resolver failed.
 """
 import argparse
+import gzip
 import json
 import os
 import pathlib
@@ -79,6 +83,12 @@ def fetch(url: str) -> str:
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
         return resp.read().decode("utf-8", "replace")
+
+
+def fetch_gzip_text(url: str) -> str:
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "*/*"})
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        return gzip.decompress(resp.read()).decode("utf-8", "replace")
 
 
 def vtuple(version: str):
@@ -171,21 +181,30 @@ def parse_win11_release(html: str) -> str:
 
 
 def parse_ubuntu_meta_release_lts(text: str) -> str:
-    versions = re.findall(r"^Version: (\d+\.\d+)(?: LTS)?\s*$", text, re.M)
-    return newest(versions)
+    # 'Version: 26.04.1 LTS' once the point release is out; the pin is the series.
+    versions = re.findall(r"^Version: (\d+\.\d+)(?:\.\d+)?(?: LTS)?\s*$", text, re.M)
+    return newest(set(versions))
+
+
+def parse_ubuntu_codename(text: str, series: str) -> str:
+    """Archive codename ('resolute') of an LTS series ('26.04') from meta-release-lts."""
+    for stanza in re.split(r"\n\s*\n", text):
+        dist = re.search(r"^Dist: (\S+)", stanza, re.M)
+        version = re.search(r"^Version: (\d+\.\d+)(?:\.\d+)?(?: LTS)?\s*$", stanza, re.M)
+        if dist and version and version.group(1) == series:
+            return dist.group(1)
+    raise ValueError(f"Ubuntu {series} is not in meta-release-lts")
+
+
+def parse_ubuntu_nvidia_branches(packages: str) -> set:
+    """Branches with an nvidia-driver-NNN-open metapackage in an apt Packages index."""
+    return set(re.findall(r"^Package: nvidia-driver-(\d+)-open\s*$", packages, re.M))
 
 
 def parse_pureboot_util(text: str) -> str:
     m = re.search(r'^PUREBOOT_VERSION_14="(.*)"', text, re.M)
     if not m:
         raise ValueError("PUREBOOT_VERSION_14 not in coreboot_util.sh")
-    return m.group(1)
-
-
-def parse_nvidia_unix_page(html: str) -> str:
-    m = re.search(r"Latest Production Branch Version:\s*(?:<[^>]+>\s*)*(\d{3})\.\d+", html)
-    if not m:
-        raise ValueError("production branch not found on the Unix driver page")
     return m.group(1)
 
 
@@ -267,7 +286,16 @@ def resolve_pureboot(cat):
 
 
 def resolve_nvidia_branch(cat):
-    return parse_nvidia_unix_page(fetch("https://www.nvidia.com/en-us/drivers/unix/")), {}, None
+    # nvidia.com's Unix driver page is not machine-readable any more; what the
+    # runbook installs is apt's nvidia-driver-NNN-open for the pinned Ubuntu
+    # series, so the newest branch in that archive (release + updates) is the
+    # upstream that matters.
+    codename = parse_ubuntu_codename(fetch("https://changelogs.ubuntu.com/meta-release-lts"), cat["UBUNTU_VERSION"])
+    branches = set()
+    for pocket in (codename, f"{codename}-updates"):
+        branches |= parse_ubuntu_nvidia_branches(fetch_gzip_text(
+            f"https://archive.ubuntu.com/ubuntu/dists/{pocket}/restricted/binary-amd64/Packages.gz"))
+    return newest(branches), {}, None
 
 
 # file, key, resolver, apply (False = report only), one-line source description
@@ -284,7 +312,7 @@ PINS = [
     (CATALOG, "WIN11_VERSION", resolve_win11_version, False, "Windows release-health page (manual: may be silicon-targeted)"),
     (MAC_ENV, "OCLP_VERSION", resolve_oclp, True, "dortania/OpenCore-Legacy-Patcher GitHub releases"),
     (LIBREM_ENV, "PUREBOOT_VERSION", resolve_pureboot, True, "Purism coreboot_util.sh PUREBOOT_VERSION_14"),
-    (RAIDER_ENV, "NVIDIA_DRIVER_BRANCH", resolve_nvidia_branch, False, "nvidia.com Unix driver page (manual: hardware-support decision)"),
+    (RAIDER_ENV, "NVIDIA_DRIVER_BRANCH", resolve_nvidia_branch, False, "Ubuntu archive nvidia-driver-NNN-open for UBUNTU_VERSION (manual: hardware-support decision)"),
 ]
 
 
@@ -391,9 +419,14 @@ def selftest() -> int:
     assert parse_rhel_release(rhel) == "10.3"
     assert parse_rhel_kernel(rhel) == "6.12.0-230.7.1.el10_3"
     assert parse_win11_release("Version 25H2 ... Version 26H1 ... Version 24H2") == "26H1"
-    assert parse_ubuntu_meta_release_lts("Dist: noble\nVersion: 24.04 LTS\n\nDist: resolute\nVersion: 26.04 LTS\n") == "26.04"
+    lts = "Dist: dapper\nVersion: 6.06 LTS\n\nDist: noble\nVersion: 24.04.5 LTS\n\nDist: resolute\nVersion: 26.04.1 LTS\n"
+    assert parse_ubuntu_meta_release_lts(lts) == "26.04"
+    assert parse_ubuntu_codename(lts, "26.04") == "resolute"
+    assert parse_ubuntu_codename(lts, "24.04") == "noble"
     assert parse_pureboot_util('X=1\nPUREBOOT_VERSION_14="Release-30.2"\nPUREBOOT_VERSION_13="Release-30.1"\n') == "Release-30.2"
-    assert parse_nvidia_unix_page("<p>Latest Production Branch Version: <a href='x'>595.58.03</a></p>") == "595"
+    pkgs = "Package: nvidia-driver-580\n\nPackage: nvidia-driver-580-open\n\nPackage: nvidia-driver-595-open\nVersion: 1\n\nPackage: nvidia-driver-600\n"
+    assert parse_ubuntu_nvidia_branches(pkgs) == {"580", "595"}
+    assert newest(parse_ubuntu_nvidia_branches(pkgs)) == "595"
     assert newest(["4.3.1", "4.3.10", "4.3.9"]) == "4.3.10"
     for path, key, *_ in PINS:
         assert key in read_env(path), f"{key} missing from {path.relative_to(ROOT)}"
