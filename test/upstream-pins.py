@@ -57,6 +57,8 @@ import pathlib
 import re
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
@@ -70,25 +72,46 @@ SBOM_MD = ROOT / "test" / "sbom-md.py"
 
 USER_AGENT = "dual-boot upstream-pins (+https://github.com/asanderson/dual-boot)"
 TIMEOUT = 30
+RETRIES = 3            # attempts per URL on a 5xx or a connection error
+RETRY_DELAY = 2.0      # seconds; doubled after each failed attempt
 
 
 # --------------------------------------------------------------------------- #
 # helpers
 # --------------------------------------------------------------------------- #
-def fetch(url: str) -> str:
+def fetch_bytes(url: str, retries: int = RETRIES, delay: float = RETRY_DELAY) -> bytes:
+    """GET url; retry a 5xx or a connection error a bounded number of times.
+
+    changelogs.ubuntu.com answers an occasional 503 between two good replies;
+    without this one bad reply would mark every pin read from it unresolved.
+    4xx is returned as-is (a moved listing is a real finding, not a blip).
+    """
     headers = {"User-Agent": USER_AGENT, "Accept": "*/*"}
     token = os.environ.get("GITHUB_TOKEN")
     if token and url.startswith("https://api.github.com/"):
         headers["Authorization"] = f"Bearer {token}"
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-        return resp.read().decode("utf-8", "replace")
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+                return resp.read()
+        except urllib.error.HTTPError as exc:
+            if exc.code < 500 or attempt == retries:
+                raise
+        except urllib.error.URLError:
+            if attempt == retries:
+                raise
+        time.sleep(delay)
+        delay *= 2
+    raise AssertionError("unreachable")
+
+
+def fetch(url: str) -> str:
+    return fetch_bytes(url).decode("utf-8", "replace")
 
 
 def fetch_gzip_text(url: str) -> str:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "*/*"})
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-        return gzip.decompress(resp.read()).decode("utf-8", "replace")
+    return gzip.decompress(fetch_bytes(url)).decode("utf-8", "replace")
 
 
 def vtuple(version: str):
@@ -428,6 +451,32 @@ def selftest() -> int:
     assert parse_ubuntu_nvidia_branches(pkgs) == {"580", "595"}
     assert newest(parse_ubuntu_nvidia_branches(pkgs)) == "595"
     assert newest(["4.3.1", "4.3.10", "4.3.9"]) == "4.3.10"
+    # fetch_bytes: a 5xx is retried a bounded number of times, a 4xx is not
+    import io
+    replies = []
+    def fake_urlopen(req, timeout=None):
+        code = replies.pop(0)
+        if code == 200:
+            return io.BytesIO(b"ok")
+        raise urllib.error.HTTPError(req.full_url, code, "x", {}, None)
+    real_urlopen, urllib.request.urlopen = urllib.request.urlopen, fake_urlopen
+    try:
+        replies[:] = [503, 503, 200]
+        assert fetch_bytes("https://example.invalid/", delay=0) == b"ok"
+        replies[:] = [503, 503, 503]
+        try:
+            fetch_bytes("https://example.invalid/", delay=0)
+            raise AssertionError("third 503 must propagate")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 503 and not replies
+        replies[:] = [404, 200]
+        try:
+            fetch_bytes("https://example.invalid/", delay=0)
+            raise AssertionError("404 must not be retried")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 404 and replies == [200]
+    finally:
+        urllib.request.urlopen = real_urlopen
     for path, key, *_ in PINS:
         assert key in read_env(path), f"{key} missing from {path.relative_to(ROOT)}"
     bom = json.loads(BOM.read_text())
