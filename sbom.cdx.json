@@ -2,9 +2,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
   "serialNumber": "urn:uuid:eab46871-7579-408a-b39d-530d73b53b0c",
-  "version": 4,
+  "version": 5,
   "metadata": {
-    "timestamp": "2026-10-29T09:15:00Z",
+    "timestamp": "2026-10-29T11:02:49Z",
     "authors": [
       {
         "name": "asanderson/dual-boot"
@@ -153,7 +153,7 @@
     {
       "type": "operating-system",
       "name": "Windows 11 Pro / Home",
-      "version": "25H2",
+      "version": "26H2",
       "supplier": {
         "name": "Microsoft"
       },
