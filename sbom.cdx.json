@@ -2,9 +2,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
   "serialNumber": "urn:uuid:eab46871-7579-408a-b39d-530d73b53b0c",
-  "version": 8,
+  "version": 9,
   "metadata": {
-    "timestamp": "2026-11-07T06:45:24Z",
+    "timestamp": "2026-11-15T06:45:26Z",
     "authors": [
       {
         "name": "asanderson/dual-boot"
@@ -110,7 +110,7 @@
     {
       "type": "operating-system",
       "name": "Rocky Linux",
-      "version": "10.2",
+      "version": "10.3",
       "supplier": {
         "name": "Rocky Enterprise Software Foundation"
       },
