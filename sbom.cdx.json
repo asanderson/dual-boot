@@ -2,9 +2,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
   "serialNumber": "urn:uuid:eab46871-7579-408a-b39d-530d73b53b0c",
-  "version": 15,
+  "version": 16,
   "metadata": {
-    "timestamp": "2026-11-25T06:49:23Z",
+    "timestamp": "2026-11-27T06:48:54Z",
     "authors": [
       {
         "name": "asanderson/dual-boot"
